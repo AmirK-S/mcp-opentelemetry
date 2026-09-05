@@ -27,7 +27,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node scripts/lint-typography.mjs",
-    "prepublishOnly": "npm run clean && npm run typecheck && npm run lint && npm run build && npm test"
+    "prepublishOnly": "npm run clean && npm run typecheck && npm run lint && npm run build && npm test",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "example:stdio": "tsx examples/stdio/client.ts"
   },
   "keywords": [
     "mcp",
@@ -56,13 +58,18 @@
   "devDependencies": {
     "@modelcontextprotocol/client": "2.0.0",
     "@modelcontextprotocol/core": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/context-async-hooks": "^2.11.0",
     "@opentelemetry/core": "^2.11.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
     "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
     "@opentelemetry/semantic-conventions": "1.43.0",
     "@types/node": "^22.20.1",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7",
     "zod": "^4.5.4"

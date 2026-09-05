@@ -1,0 +1,206 @@
+{
+  "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+  "spans": [
+    {
+      "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+      "spanID": "8d5db317e009d0ce",
+      "operationName": "tools/call get-weather",
+      "references": [
+        {
+          "refType": "CHILD_OF",
+          "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+          "spanID": "e3740115a3795082"
+        }
+      ],
+      "startTime": 1788632207496000,
+      "duration": 23024,
+      "tags": [
+        {
+          "key": "otel.scope.name",
+          "type": "string",
+          "value": "mcp-opentelemetry"
+        },
+        {
+          "key": "otel.scope.version",
+          "type": "string",
+          "value": "0.1.0"
+        },
+        {
+          "key": "gen_ai.operation.name",
+          "type": "string",
+          "value": "execute_tool"
+        },
+        {
+          "key": "gen_ai.tool.name",
+          "type": "string",
+          "value": "get-weather"
+        },
+        {
+          "key": "jsonrpc.protocol.version",
+          "type": "string",
+          "value": "2.0"
+        },
+        {
+          "key": "jsonrpc.request.id",
+          "type": "string",
+          "value": "1"
+        },
+        {
+          "key": "mcp.method.name",
+          "type": "string",
+          "value": "tools/call"
+        },
+        {
+          "key": "mcp.protocol.version",
+          "type": "string",
+          "value": "2025-11-25"
+        },
+        {
+          "key": "network.transport",
+          "type": "string",
+          "value": "pipe"
+        },
+        {
+          "key": "span.kind",
+          "type": "string",
+          "value": "server"
+        }
+      ],
+      "logs": [],
+      "processID": "p1",
+      "warnings": null
+    },
+    {
+      "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+      "spanID": "e15da8e29f2a2cc3",
+      "operationName": "lookup-forecast",
+      "references": [
+        {
+          "refType": "CHILD_OF",
+          "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+          "spanID": "8d5db317e009d0ce"
+        }
+      ],
+      "startTime": 1788632207497000,
+      "duration": 21174,
+      "tags": [
+        {
+          "key": "otel.scope.name",
+          "type": "string",
+          "value": "example-server"
+        },
+        {
+          "key": "span.kind",
+          "type": "string",
+          "value": "internal"
+        }
+      ],
+      "logs": [],
+      "processID": "p1",
+      "warnings": null
+    },
+    {
+      "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+      "spanID": "e3740115a3795082",
+      "operationName": "tools/call get-weather",
+      "references": [
+        {
+          "refType": "CHILD_OF",
+          "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+          "spanID": "dbb6471a49c77f21"
+        }
+      ],
+      "startTime": 1788632207496000,
+      "duration": 23596,
+      "tags": [
+        {
+          "key": "otel.scope.name",
+          "type": "string",
+          "value": "mcp-opentelemetry"
+        },
+        {
+          "key": "otel.scope.version",
+          "type": "string",
+          "value": "0.1.0"
+        },
+        {
+          "key": "gen_ai.operation.name",
+          "type": "string",
+          "value": "execute_tool"
+        },
+        {
+          "key": "gen_ai.tool.name",
+          "type": "string",
+          "value": "get-weather"
+        },
+        {
+          "key": "jsonrpc.protocol.version",
+          "type": "string",
+          "value": "2.0"
+        },
+        {
+          "key": "jsonrpc.request.id",
+          "type": "string",
+          "value": "1"
+        },
+        {
+          "key": "mcp.method.name",
+          "type": "string",
+          "value": "tools/call"
+        },
+        {
+          "key": "mcp.protocol.version",
+          "type": "string",
+          "value": "2025-11-25"
+        },
+        {
+          "key": "network.transport",
+          "type": "string",
+          "value": "pipe"
+        },
+        {
+          "key": "span.kind",
+          "type": "string",
+          "value": "client"
+        }
+      ],
+      "logs": [],
+      "processID": "p2",
+      "warnings": null
+    },
+    {
+      "traceID": "a566004f7ebe0c160ca7cd968509f9cf",
+      "spanID": "dbb6471a49c77f21",
+      "operationName": "agent",
+      "references": [],
+      "startTime": 1788632207495000,
+      "duration": 24977,
+      "tags": [
+        {
+          "key": "otel.scope.name",
+          "type": "string",
+          "value": "example-client"
+        },
+        {
+          "key": "span.kind",
+          "type": "string",
+          "value": "internal"
+        }
+      ],
+      "logs": [],
+      "processID": "p2",
+      "warnings": null
+    }
+  ],
+  "processes": {
+    "p1": {
+      "serviceName": "mcp-example-server",
+      "tags": []
+    },
+    "p2": {
+      "serviceName": "mcp-example-client",
+      "tags": []
+    }
+  },
+  "warnings": null
+}
