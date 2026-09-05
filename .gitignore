@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+*.log
+.env
+.env.*
+.DS_Store
+# outputs of the conformance and Jaeger runs are committed on purpose under test/integration/results

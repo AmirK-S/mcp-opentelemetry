@@ -1,0 +1,70 @@
+{
+  "name": "mcp-opentelemetry",
+  "version": "0.1.0",
+  "description": "OpenTelemetry instrumentation for the MCP TypeScript SDK v2 (protocol revision 2026-07-28): W3C Trace Context propagation through params._meta and spans that follow the OpenTelemetry semantic conventions for MCP.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node scripts/lint-typography.mjs",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm run lint && npm run build && npm test"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "opentelemetry",
+    "otel",
+    "tracing",
+    "traceparent",
+    "w3c-trace-context",
+    "observability"
+  ],
+  "author": "Amir Kellou-Sidhoum",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmirK-S/mcp-opentelemetry.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AmirK-S/mcp-opentelemetry/issues"
+  },
+  "homepage": "https://github.com/AmirK-S/mcp-opentelemetry#readme",
+  "peerDependencies": {
+    "@modelcontextprotocol/core": "^2.0.0",
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/core": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/context-async-hooks": "^2.11.0",
+    "@opentelemetry/core": "^2.11.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@opentelemetry/semantic-conventions": "1.43.0",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
+    "zod": "^4.5.4"
+  }
+}
