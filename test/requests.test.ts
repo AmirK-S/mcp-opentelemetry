@@ -50,7 +50,14 @@ describe('tools/call request', () => {
     const clientSpan = otel.clientSpans().find((s) => s.name === 'tools/call echo');
     expect(clientSpan).toBeDefined();
     expect(tp.spanId).toBe(clientSpan!.spanContext().spanId);
-    expect(pair.observed[0]?.meta?.[TRACEPARENT_META_KEY]).toBe(meta?.[TRACEPARENT_META_KEY]);
+
+    // The handler sees the same trace, re-parented under the server span so
+    // that anything it forwards hangs below the server span (see README).
+    const serverSpan = otel.serverSpans().find((s) => s.name === 'tools/call echo')!;
+    const seen = parseTraceparent(pair.observed[0]?.meta?.[TRACEPARENT_META_KEY]);
+    expect(seen.traceId).toBe(tp.traceId);
+    expect(seen.spanId).toBe(serverSpan.spanContext().spanId);
+    expect(pair.observed[0]?.meta?.['example.com/custom']).toBe('kept');
   });
 
   it('produces one CLIENT span and one SERVER span in the same trace, server parented to client', async () => {
@@ -121,10 +128,13 @@ describe('tools/call request', () => {
 
   it('runs the tool handler inside the server span context', async () => {
     const otel = setupOtel();
-    pair = await connectedPair({
-      instrumentClient: (t) => instrumentClientTransport(t, otel.options),
-      instrumentServer: (t) => instrumentServerTransport(t, otel.options),
-    });
+    pair = await connectedPair(
+      {
+        instrumentClient: (t) => instrumentClientTransport(t, otel.options),
+        instrumentServer: (t) => instrumentServerTransport(t, otel.options),
+      },
+      otel,
+    );
     await pair.client.callTool({ name: 'echo', arguments: { text: 'hi' } });
     const serverSpan = otel.serverSpans().find((s) => s.name === 'tools/call echo')!;
     const obs = pair.observed[0]!;
