@@ -22,3 +22,20 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      jaeger:
+        image: cr.jaegertracing.io/jaegertracing/jaeger:2.20.0
+        ports:
+          - 16686:16686
+          - 4318:4318
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration

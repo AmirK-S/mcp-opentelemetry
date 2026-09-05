@@ -1,0 +1,90 @@
+[
+  {
+    "id": "sep-2322-sampling-incomplete",
+    "name": "InputRequiredResultSamplingIncomplete",
+    "description": "Server returns InputRequiredResult with sampling inputRequest",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.576Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "resultType": "input_required",
+        "inputRequests": {
+          "capital_question": {
+            "method": "sampling/createMessage",
+            "params": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": {
+                    "type": "text",
+                    "text": "What is the capital of France?"
+                  }
+                }
+              ],
+              "maxTokens": 100
+            }
+          }
+        },
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "sep-2322-sampling-complete",
+    "name": "InputRequiredResultSamplingComplete",
+    "description": "Server returns complete result after retry with sampling response",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.578Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Sampled: The capital of France is Paris."
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.578Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 4,
+      "violations": []
+    }
+  }
+]

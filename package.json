@@ -29,7 +29,8 @@
     "lint": "node scripts/lint-typography.mjs",
     "prepublishOnly": "npm run clean && npm run typecheck && npm run lint && npm run build && npm test",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "example:stdio": "tsx examples/stdio/client.ts"
+    "example:stdio": "tsx examples/stdio/client.ts",
+    "conformance": "bash scripts/conformance.sh"
   },
   "keywords": [
     "mcp",

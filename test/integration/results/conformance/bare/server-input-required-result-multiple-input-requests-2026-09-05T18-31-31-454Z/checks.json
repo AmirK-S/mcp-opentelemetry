@@ -1,0 +1,112 @@
+[
+  {
+    "id": "sep-2322-multiple-inputs-incomplete",
+    "name": "InputRequiredResultMultipleInputsIncomplete",
+    "description": "Server returns InputRequiredResult with multiple inputRequests of different types",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.457Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "resultType": "input_required",
+        "inputRequests": {
+          "user_name": {
+            "method": "elicitation/create",
+            "params": {
+              "message": "What is your name?",
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "mode": "form"
+            }
+          },
+          "greeting": {
+            "method": "sampling/createMessage",
+            "params": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": {
+                    "type": "text",
+                    "text": "Generate a greeting"
+                  }
+                }
+              ],
+              "maxTokens": 50
+            }
+          },
+          "client_roots": {
+            "method": "roots/list"
+          }
+        },
+        "requestState": "v1.eyJwIjp7InRvb2wiOiJtdWx0aXBsZV9pbnB1dHMiLCJyb3VuZCI6MX0sImV4cCI6MTc4ODYzMzY5MX0.jqcvUdQ5Bkji0ISnOjphUNUXdNOU25ymkRWiFkMhMzw",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "sep-2322-multiple-inputs-complete",
+    "name": "InputRequiredResultMultipleInputsComplete",
+    "description": "Server returns complete result after all inputResponses are provided",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.459Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "All inputs received for Alice"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.459Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 4,
+      "violations": []
+    }
+  }
+]

@@ -1,0 +1,78 @@
+[
+  {
+    "id": "sep-2322-list-roots-incomplete",
+    "name": "InputRequiredResultListRootsIncomplete",
+    "description": "Server returns InputRequiredResult with roots/list inputRequest",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.446Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "resultType": "input_required",
+        "inputRequests": {
+          "client_roots": {
+            "method": "roots/list"
+          }
+        },
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "sep-2322-list-roots-complete",
+    "name": "InputRequiredResultListRootsComplete",
+    "description": "Server returns complete result after retry with roots response",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.448Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Roots: file:///test/root"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.448Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 4,
+      "violations": []
+    }
+  }
+]

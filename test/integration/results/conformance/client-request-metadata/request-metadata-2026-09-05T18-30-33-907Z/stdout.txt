@@ -1,0 +1,1 @@
+Client.listTools() called but server does not advertise tools capability - returning empty list

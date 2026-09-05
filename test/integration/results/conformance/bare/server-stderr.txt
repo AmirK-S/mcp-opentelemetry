@@ -1,0 +1,12 @@
+listening on http://localhost:3000/mcp
+handler error: Rejected inbound request (modern-header-without-claim): Invalid params: the MCP-Protocol-Version header names protocol revision 2026-07-28, but the request is missing the required per-request envelope key(s): _meta
+handler error: Rejected inbound request (modern-header-without-claim): Invalid params: the MCP-Protocol-Version header names protocol revision 2026-07-28, but the request is missing the required per-request envelope key(s): io.modelcontextprotocol/protocolVersion
+handler error: Rejected inbound request (envelope-invalid): Invalid _meta envelope for protocol revision 2026-07-28: io.modelcontextprotocol/clientCapabilities: missing
+handler error: Unsupported protocol version: v999.0.0
+handler error: Rejected inbound request (header-body-version-mismatch): Bad Request: the request headers and body disagree: the body envelope names protocol version v999.0.0 but the MCP-Protocol-Version header names 2026-07-28
+handler error: Rejected inbound request (method-header-mismatch): Bad Request: the request headers and body disagree: the body names method tools/call but the Mcp-Method header names tasks/get
+handler error: Rejected inbound request (method-header-mismatch): Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names prompts/list
+handler error: Rejected inbound request (method-header-missing): Bad Request: the request headers and body disagree: the body names method tools/list but the required Mcp-Method header is absent
+handler error: Rejected inbound request (name-header-mismatch): Bad Request: the request headers and body disagree: the body carries params.name="test_simple_text" but the Mcp-Name header names "wrong_tool_name"
+handler error: Rejected inbound request (name-header-missing): Bad Request: the request headers and body disagree: the body carries params.name="test_simple_text" but the required Mcp-Name header is absent
+handler error: Rejected inbound request (method-header-mismatch): Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names TOOLS/LIST

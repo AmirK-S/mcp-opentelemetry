@@ -1,0 +1,751 @@
+[
+  {
+    "id": "sep-2243-server-reject-invalid-headers",
+    "name": "ServerRejectsMismatchedMethodHeader",
+    "description": "Server rejects requests where Mcp-Method header does not match body method",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.710Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyMethod": "tools/list",
+      "mcpMethodHeader": "prompts/list",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names prompts/list",
+          "data": {
+            "mismatch": {
+              "header": "prompts/list",
+              "body": "the body names method tools/list but the Mcp-Method header names prompts/list"
+            }
+          }
+        },
+        "id": 100
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-error-code",
+    "name": "ServerRejectsMismatchedMethodHeaderErrorCode",
+    "description": "Server rejects requests where Mcp-Method header does not match body method - uses JSON-RPC error code -32020 (HeaderMismatch)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.710Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyMethod": "tools/list",
+      "mcpMethodHeader": "prompts/list",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names prompts/list",
+          "data": {
+            "mismatch": {
+              "header": "prompts/list",
+              "body": "the body names method tools/list but the Mcp-Method header names prompts/list"
+            }
+          }
+        },
+        "id": 100
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-invalid-headers",
+    "name": "ServerRejectsMissingMethodHeader",
+    "description": "Server rejects requests with missing Mcp-Method header",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.710Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyMethod": "tools/list",
+      "mcpMethodHeader": "(missing)",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body names method tools/list but the required Mcp-Method header is absent",
+          "data": {
+            "mismatch": {
+              "header": "(missing)",
+              "body": "the body names method tools/list but the required Mcp-Method header is absent"
+            }
+          }
+        },
+        "id": 101
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-error-code",
+    "name": "ServerRejectsMissingMethodHeaderErrorCode",
+    "description": "Server rejects requests with missing Mcp-Method header - uses JSON-RPC error code -32020 (HeaderMismatch)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.710Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyMethod": "tools/list",
+      "mcpMethodHeader": "(missing)",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body names method tools/list but the required Mcp-Method header is absent",
+          "data": {
+            "mismatch": {
+              "header": "(missing)",
+              "body": "the body names method tools/list but the required Mcp-Method header is absent"
+            }
+          }
+        },
+        "id": 101
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-invalid-headers",
+    "name": "ServerRejectsMismatchedNameHeader",
+    "description": "Server rejects tools/call where Mcp-Name does not match body params.name",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.711Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyName": "test_simple_text",
+      "mcpNameHeader": "wrong_tool_name",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body carries params.name=\"test_simple_text\" but the Mcp-Name header names \"wrong_tool_name\"",
+          "data": {
+            "mismatch": {
+              "header": "wrong_tool_name",
+              "body": "the body carries params.name=\"test_simple_text\" but the Mcp-Name header names \"wrong_tool_name\""
+            }
+          }
+        },
+        "id": 102
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-error-code",
+    "name": "ServerRejectsMismatchedNameHeaderErrorCode",
+    "description": "Server rejects tools/call where Mcp-Name does not match body params.name - uses JSON-RPC error code -32020 (HeaderMismatch)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.711Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyName": "test_simple_text",
+      "mcpNameHeader": "wrong_tool_name",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body carries params.name=\"test_simple_text\" but the Mcp-Name header names \"wrong_tool_name\"",
+          "data": {
+            "mismatch": {
+              "header": "wrong_tool_name",
+              "body": "the body carries params.name=\"test_simple_text\" but the Mcp-Name header names \"wrong_tool_name\""
+            }
+          }
+        },
+        "id": 102
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-accepts-whitespace-header-value",
+    "name": "ServerAcceptsWhitespaceHeaderValue",
+    "description": "Server MUST accept leading/trailing whitespace in Mcp-Name value (RFC 9110 §5.5: field parsing MUST exclude OWS before evaluating)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.712Z",
+    "specReferences": [
+      {
+        "id": "RFC-9110-5.5-Field-Values",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110#section-5.5"
+      }
+    ],
+    "details": {
+      "headerValue": "  test_simple_text  ",
+      "bodyValue": "test_simple_text",
+      "reason": "HTTP spec requires trimming OWS around field values",
+      "responseStatus": 200,
+      "responseBody": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "This is a simple text response for testing."
+            }
+          ],
+          "resultType": "complete",
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "mcp-otel-conformance-server",
+              "version": "0.1.0"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 103
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-invalid-headers",
+    "name": "ServerRejectsMissingNameHeader",
+    "description": "Server MUST reject tools/call with missing Mcp-Name header when body has params.name",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.716Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyName": "test_simple_text",
+      "mcpNameHeader": "(missing)",
+      "reason": "Standard header omitted but value present in body → MUST reject",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body carries params.name=\"test_simple_text\" but the required Mcp-Name header is absent",
+          "data": {
+            "mismatch": {
+              "header": "(missing)",
+              "body": "the body carries params.name=\"test_simple_text\" but the required Mcp-Name header is absent"
+            }
+          }
+        },
+        "id": 104
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-error-code",
+    "name": "ServerRejectsMissingNameHeaderErrorCode",
+    "description": "Server MUST reject tools/call with missing Mcp-Name header when body has params.name - uses JSON-RPC error code -32020 (HeaderMismatch)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.716Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Server-Validation",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#server-validation"
+      }
+    ],
+    "details": {
+      "requestBodyName": "test_simple_text",
+      "mcpNameHeader": "(missing)",
+      "reason": "Standard header omitted but value present in body → MUST reject",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body carries params.name=\"test_simple_text\" but the required Mcp-Name header is absent",
+          "data": {
+            "mismatch": {
+              "header": "(missing)",
+              "body": "the body carries params.name=\"test_simple_text\" but the required Mcp-Name header is absent"
+            }
+          }
+        },
+        "id": 104
+      }
+    }
+  },
+  {
+    "id": "sep-2243-header-name-case-insensitive",
+    "name": "ServerAcceptsLowercaseHeaderName",
+    "description": "Server MUST accept lowercase header name (mcp-method)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.725Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Case-Sensitivity",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#case-sensitivity"
+      }
+    ],
+    "details": {
+      "headerNameUsed": "mcp-method",
+      "responseStatus": 200,
+      "responseBody": {
+        "result": {
+          "tools": [
+            {
+              "name": "test_simple_text",
+              "description": "Tests simple text content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_image_content",
+              "description": "Tests image content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_audio_content",
+              "description": "Tests audio content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_embedded_resource",
+              "description": "Tests embedded resource content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_multiple_content_types",
+              "description": "Tests response with multiple content types (text, image, resource)",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_tool_with_logging",
+              "description": "Tests tool that emits log messages during execution",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_logging_tool",
+              "description": "Tests tool that emits log messages during execution",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_tool_with_progress",
+              "description": "Tests tool that reports progress notifications",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_error_handling",
+              "description": "Tests error response handling",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_missing_capability",
+              "description": "Requires a client capability that must be declared explicitly",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_streaming_elicitation",
+              "description": "Streams an embedded elicitation request",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_elicitation",
+              "description": "Multi-round-trip elicitation flow",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_sampling",
+              "description": "Multi-round-trip sampling flow",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_list_roots",
+              "description": "Multi-round-trip roots/list flow",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_request_state",
+              "description": "Multi-round-trip flow carrying requestState",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_multiple_inputs",
+              "description": "Multi-round-trip flow with several input requests",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_multi_round",
+              "description": "Multi-round-trip flow over three rounds",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_tampered_state",
+              "description": "Multi-round-trip flow with integrity-protected state",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_capabilities",
+              "description": "Only requests inputs the client declared support for",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          ],
+          "resultType": "complete",
+          "ttlMs": 300000,
+          "cacheScope": "public",
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "mcp-otel-conformance-server",
+              "version": "0.1.0"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 105
+      }
+    }
+  },
+  {
+    "id": "sep-2243-header-name-case-insensitive",
+    "name": "ServerAcceptsUppercaseHeaderName",
+    "description": "Server MUST accept uppercase header name (MCP-METHOD)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.726Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Case-Sensitivity",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#case-sensitivity"
+      }
+    ],
+    "details": {
+      "headerNameUsed": "MCP-METHOD",
+      "responseStatus": 200,
+      "responseBody": {
+        "result": {
+          "tools": [
+            {
+              "name": "test_simple_text",
+              "description": "Tests simple text content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_image_content",
+              "description": "Tests image content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_audio_content",
+              "description": "Tests audio content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_embedded_resource",
+              "description": "Tests embedded resource content response",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_multiple_content_types",
+              "description": "Tests response with multiple content types (text, image, resource)",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_tool_with_logging",
+              "description": "Tests tool that emits log messages during execution",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_logging_tool",
+              "description": "Tests tool that emits log messages during execution",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_tool_with_progress",
+              "description": "Tests tool that reports progress notifications",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_error_handling",
+              "description": "Tests error response handling",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_missing_capability",
+              "description": "Requires a client capability that must be declared explicitly",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_streaming_elicitation",
+              "description": "Streams an embedded elicitation request",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_elicitation",
+              "description": "Multi-round-trip elicitation flow",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_sampling",
+              "description": "Multi-round-trip sampling flow",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_list_roots",
+              "description": "Multi-round-trip roots/list flow",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_request_state",
+              "description": "Multi-round-trip flow carrying requestState",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_multiple_inputs",
+              "description": "Multi-round-trip flow with several input requests",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_multi_round",
+              "description": "Multi-round-trip flow over three rounds",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_tampered_state",
+              "description": "Multi-round-trip flow with integrity-protected state",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            },
+            {
+              "name": "test_input_required_result_capabilities",
+              "description": "Only requests inputs the client declared support for",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          ],
+          "resultType": "complete",
+          "ttlMs": 300000,
+          "cacheScope": "public",
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "mcp-otel-conformance-server",
+              "version": "0.1.0"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 106
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-invalid-headers",
+    "name": "ServerRejectsCaseMismatchValue",
+    "description": "Server MUST reject uppercase method value (TOOLS/LIST) since values are case-sensitive",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.727Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Case-Sensitivity",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#case-sensitivity"
+      }
+    ],
+    "details": {
+      "headerValue": "TOOLS/LIST",
+      "bodyValue": "tools/list",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names TOOLS/LIST",
+          "data": {
+            "mismatch": {
+              "header": "TOOLS/LIST",
+              "body": "the body names method tools/list but the Mcp-Method header names TOOLS/LIST"
+            }
+          }
+        },
+        "id": 107
+      }
+    }
+  },
+  {
+    "id": "sep-2243-server-reject-error-code",
+    "name": "ServerRejectsCaseMismatchValueErrorCode",
+    "description": "Server MUST reject uppercase method value (TOOLS/LIST) since values are case-sensitive - uses JSON-RPC error code -32020 (HeaderMismatch)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.727Z",
+    "specReferences": [
+      {
+        "id": "SEP-2243-Case-Sensitivity",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#case-sensitivity"
+      }
+    ],
+    "details": {
+      "headerValue": "TOOLS/LIST",
+      "bodyValue": "tools/list",
+      "responseStatus": 400,
+      "responseBody": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32020,
+          "message": "Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names TOOLS/LIST",
+          "data": {
+            "mismatch": {
+              "header": "TOOLS/LIST",
+              "body": "the body names method tools/list but the Mcp-Method header names TOOLS/LIST"
+            }
+          }
+        },
+        "id": 107
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:38.727Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 2,
+      "violations": []
+    }
+  }
+]

@@ -1,0 +1,148 @@
+/**
+ * Normalises one conformance run and compares two of them.
+ *
+ * The suite writes one directory per scenario, named `server-<scenario>-<ISO timestamp>`,
+ * each holding a single `checks.json`. The timestamps differ between two runs by
+ * construction, and every check carries its own `timestamp` field, so a raw diff of the
+ * output directories is pure noise. Only two things are compared here: the list of
+ * scenarios, and the ordered list of `<check id> <status>` pairs inside each one.
+ *
+ * Usage:
+ *   node scripts/conformance-compare.mjs <bareDir> <instrumentedDir> <comparisonMd>
+ */
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const SCENARIO_DIR = /^server-(.+)-\d{4}-\d{2}-\d{2}T[\dZ.-]+$/;
+
+/** @returns {Map<string, {id: string, status: string, errorMessage?: string}[]>} */
+function readRun(dir) {
+  const scenarios = new Map();
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (!statSync(full).isDirectory()) continue;
+    const match = SCENARIO_DIR.exec(entry);
+    if (match === null) continue;
+    const scenario = match[1];
+    let checks;
+    try {
+      checks = JSON.parse(readFileSync(join(full, 'checks.json'), 'utf8'));
+    } catch {
+      checks = [];
+    }
+    scenarios.set(
+      scenario,
+      checks.map((c) => ({ id: String(c.id), status: String(c.status), errorMessage: c.errorMessage ?? undefined })),
+    );
+  }
+  return new Map([...scenarios.entries()].sort((a, b) => a[0].localeCompare(b[0])));
+}
+
+function fingerprint(checks) {
+  return checks.map((c) => `${c.id}=${c.status}`).join('|');
+}
+
+function verdict(checks) {
+  const failed = checks.filter((c) => c.status === 'FAILURE').length;
+  const passed = checks.filter((c) => c.status === 'SUCCESS').length;
+  return `${failed === 0 ? 'PASS' : 'FAIL'} (${passed} ok, ${failed} ko)`;
+}
+
+const [bareDir, instrumentedDir, outFile] = process.argv.slice(2);
+if (bareDir === undefined || instrumentedDir === undefined || outFile === undefined) {
+  console.error('usage: node scripts/conformance-compare.mjs <bareDir> <instrumentedDir> <comparisonMd>');
+  process.exit(2);
+}
+
+const bare = readRun(bareDir);
+const instrumented = readRun(instrumentedDir);
+const names = [...new Set([...bare.keys(), ...instrumented.keys()])].sort();
+
+const rows = [];
+let divergent = 0;
+for (const name of names) {
+  const b = bare.get(name);
+  const i = instrumented.get(name);
+  if (b === undefined || i === undefined) {
+    divergent += 1;
+    rows.push({ name, bare: b === undefined ? 'absent' : verdict(b), instrumented: i === undefined ? 'absent' : verdict(i), same: false });
+    continue;
+  }
+  const same = fingerprint(b) === fingerprint(i);
+  if (!same) divergent += 1;
+  rows.push({ name, bare: verdict(b), instrumented: verdict(i), same });
+}
+
+// Checks failing on both sides: the example server's own gaps, not the instrumentation's.
+const commonFailures = [];
+for (const [name, checks] of bare) {
+  const other = instrumented.get(name) ?? [];
+  for (const c of checks) {
+    if (c.status !== 'FAILURE') continue;
+    const twin = other.find((o) => o.id === c.id);
+    if (twin !== undefined && twin.status === 'FAILURE') {
+      commonFailures.push({ scenario: name, id: c.id, reason: (c.errorMessage ?? '').replace(/\s+/g, ' ').slice(0, 220) });
+    }
+  }
+}
+
+const onlyInstrumented = [];
+for (const [name, checks] of instrumented) {
+  const other = bare.get(name) ?? [];
+  for (const c of checks) {
+    if (c.status !== 'FAILURE') continue;
+    const twin = other.find((o) => o.id === c.id);
+    if (twin === undefined || twin.status !== 'FAILURE') {
+      onlyInstrumented.push({ scenario: name, id: c.id, reason: (c.errorMessage ?? '').replace(/\s+/g, ' ').slice(0, 220) });
+    }
+  }
+}
+
+const lines = [];
+lines.push('# Conformance 2026-07-28 : serveur nu contre serveur instrumente');
+lines.push('');
+lines.push(`Genere par \`scripts/conformance.sh\`. Suite : \`@modelcontextprotocol/conformance@0.2.0-alpha.11\`, \`--requirements 2026-07-28\`.`);
+lines.push('');
+lines.push(`Scenarios : ${names.length}. Identiques : ${names.length - divergent}. Divergents : ${divergent}.`);
+lines.push('');
+lines.push('| Scenario | Nu | Instrumente | Identique |');
+lines.push('| --- | --- | --- | --- |');
+for (const r of rows) lines.push(`| ${r.name} | ${r.bare} | ${r.instrumented} | ${r.same ? 'oui' : 'NON'} |`);
+lines.push('');
+lines.push('## Checks en echec des deux cotes');
+lines.push('');
+if (commonFailures.length === 0) {
+  lines.push('Aucun.');
+} else {
+  lines.push('Trous du serveur d exemple, pas de l instrumentation : le meme check echoue a l identique sur les deux runs.');
+  lines.push('');
+  lines.push('| Scenario | Check | Raison |');
+  lines.push('| --- | --- | --- |');
+  for (const f of commonFailures) lines.push(`| ${f.scenario} | ${f.id} | ${f.reason.replace(/\|/g, '/')} |`);
+}
+lines.push('');
+lines.push('## Checks en echec du seul cote instrumente');
+lines.push('');
+if (onlyInstrumented.length === 0) {
+  lines.push('Aucun. L instrumentation ne casse aucun scenario.');
+} else {
+  lines.push('| Scenario | Check | Raison |');
+  lines.push('| --- | --- | --- |');
+  for (const f of onlyInstrumented) lines.push(`| ${f.scenario} | ${f.id} | ${f.reason.replace(/\|/g, '/')} |`);
+}
+lines.push('');
+
+writeFileSync(outFile, lines.join('\n'));
+
+// Normalised summaries, so a plain diff of the two runs is readable.
+for (const [dir, run] of [
+  [bareDir, bare],
+  [instrumentedDir, instrumented],
+]) {
+  const tsv = [];
+  for (const [name, checks] of run) for (const c of checks) tsv.push(`${name}\t${c.id}\t${c.status}`);
+  writeFileSync(join(dir, 'summary.tsv'), tsv.join('\n') + '\n');
+}
+
+console.log(`scenarios=${names.length} identical=${names.length - divergent} divergent=${divergent} commonFailures=${commonFailures.length} instrumentedOnlyFailures=${onlyInstrumented.length}`);
+process.exit(divergent === 0 && onlyInstrumented.length === 0 ? 0 : 1);

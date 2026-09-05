@@ -1,0 +1,94 @@
+[
+  {
+    "id": "sep-2322-request-state-incomplete",
+    "name": "InputRequiredResultRequestStateIncomplete",
+    "description": "Server returns InputRequiredResult with both inputRequests and requestState",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.451Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "resultType": "input_required",
+        "inputRequests": {
+          "confirm": {
+            "method": "elicitation/create",
+            "params": {
+              "message": "Please confirm",
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "ok": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "ok"
+                ]
+              },
+              "mode": "form"
+            }
+          }
+        },
+        "requestState": "v1.eyJwIjp7InRvb2wiOiJyZXF1ZXN0X3N0YXRlIiwicm91bmQiOjF9LCJleHAiOjE3ODg2MzM2OTF9.Tw3_Zm1DcL-vZEKYxvkVSUsJl0VMxJFqIysPGRMH8KU",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "sep-2322-request-state-complete",
+    "name": "InputRequiredResultRequestStateComplete",
+    "description": "Server validates echoed requestState and returns complete result",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.454Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "state-ok round 1"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.454Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 4,
+      "violations": []
+    }
+  }
+]

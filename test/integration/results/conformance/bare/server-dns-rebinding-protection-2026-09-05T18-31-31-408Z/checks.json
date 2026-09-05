@@ -1,0 +1,86 @@
+[
+  {
+    "id": "localhost-host-rebinding-rejected",
+    "name": "DNSRebindingRejected",
+    "description": "Server rejects requests with non-localhost Host/Origin headers",
+    "timestamp": "2026-09-05T18:31:31.408Z",
+    "specReferences": [
+      {
+        "id": "MCP-DNS-Rebinding-Protection",
+        "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices#local-mcp-server-compromise"
+      },
+      {
+        "id": "MCP-Transport-Security",
+        "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning"
+      }
+    ],
+    "status": "SUCCESS",
+    "details": {
+      "hostHeader": "evil.example.com",
+      "originHeader": "http://evil.example.com",
+      "statusCode": 403,
+      "body": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32000,
+          "message": "Invalid Host: evil.example.com"
+        },
+        "id": null
+      }
+    }
+  },
+  {
+    "id": "localhost-host-valid-accepted",
+    "name": "LocalhostHostAccepted",
+    "description": "Server accepts requests with valid localhost Host/Origin headers",
+    "timestamp": "2026-09-05T18:31:31.408Z",
+    "specReferences": [
+      {
+        "id": "MCP-DNS-Rebinding-Protection",
+        "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices#local-mcp-server-compromise"
+      },
+      {
+        "id": "MCP-Transport-Security",
+        "url": "https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning"
+      }
+    ],
+    "status": "SUCCESS",
+    "details": {
+      "hostHeader": "localhost:3000",
+      "originHeader": "http://localhost:3000",
+      "statusCode": 200,
+      "body": {
+        "result": {
+          "supportedVersions": [
+            "2026-07-28"
+          ],
+          "capabilities": {
+            "tools": {
+              "listChanged": true
+            },
+            "resources": {
+              "subscribe": true,
+              "listChanged": true
+            },
+            "prompts": {
+              "listChanged": true
+            },
+            "logging": {},
+            "completions": {}
+          },
+          "resultType": "complete",
+          "ttlMs": 300000,
+          "cacheScope": "public",
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "mcp-otel-conformance-server",
+              "version": "0.1.0"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 1
+      }
+    }
+  }
+]

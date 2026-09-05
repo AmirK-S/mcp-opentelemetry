@@ -1,0 +1,70 @@
+[
+  {
+    "id": "tools-call-with-progress",
+    "name": "ToolsCallWithProgress",
+    "description": "Tool reports progress notifications",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.365Z",
+    "specReferences": [
+      {
+        "id": "MCP-Progress",
+        "url": "https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/progress"
+      }
+    ],
+    "details": {
+      "progressCount": 3,
+      "progressNotifications": [
+        {
+          "progressToken": "progress-test-1",
+          "progress": 0,
+          "total": 100,
+          "message": "Completed step 0 of 100"
+        },
+        {
+          "progressToken": "progress-test-1",
+          "progress": 50,
+          "total": 100,
+          "message": "Completed step 50 of 100"
+        },
+        {
+          "progressToken": "progress-test-1",
+          "progress": 100,
+          "total": 100,
+          "message": "Completed step 100 of 100"
+        }
+      ],
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "progress-test-1"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.365Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 5,
+      "violations": []
+    }
+  }
+]

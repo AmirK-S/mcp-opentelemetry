@@ -1,0 +1,166 @@
+[
+  {
+    "id": "sep-2575-http-client-sends-version-header",
+    "name": "ClientSendsVersionHeader",
+    "description": "Client sends MCP-Protocol-Version header on every POST",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.394Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#protocol-version-header"
+      }
+    ],
+    "details": {
+      "method": "tools/call",
+      "headerVersion": "2026-07-28"
+    }
+  },
+  {
+    "id": "sep-2575-client-populates-meta",
+    "name": "ClientPopulatesMeta",
+    "description": "Client populates _meta on every request with the required fields (protocolVersion, clientCapabilities)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.395Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/index#meta"
+      }
+    ],
+    "details": {
+      "method": "tools/call",
+      "meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {
+          "name": "mcp-otel-conformance-client",
+          "version": "0.1.0"
+        },
+        "io.modelcontextprotocol/clientCapabilities": {
+          "roots": {
+            "listChanged": true
+          },
+          "sampling": {},
+          "elicitation": {}
+        },
+        "traceparent": "00-2c7db542fcc068da40e13720dfb694cb-d081d43e5ba0e437-01"
+      }
+    }
+  },
+  {
+    "id": "sep-2575-client-sends-client-info",
+    "name": "ClientSendsClientInfo",
+    "description": "Client SHOULD include io.modelcontextprotocol/clientInfo in every request's _meta (spec PR #3002)",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.395Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/index#meta"
+      }
+    ],
+    "details": {
+      "method": "tools/call",
+      "meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": {
+          "name": "mcp-otel-conformance-client",
+          "version": "0.1.0"
+        },
+        "io.modelcontextprotocol/clientCapabilities": {
+          "roots": {
+            "listChanged": true
+          },
+          "sampling": {},
+          "elicitation": {}
+        },
+        "traceparent": "00-2c7db542fcc068da40e13720dfb694cb-d081d43e5ba0e437-01"
+      }
+    }
+  },
+  {
+    "id": "sep-2575-http-version-header-matches-meta",
+    "name": "ClientVersionHeaderMatchesMeta",
+    "description": "MCP-Protocol-Version header matches _meta.protocolVersion",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.395Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#protocol-version-header"
+      }
+    ],
+    "details": {
+      "headerVersion": "2026-07-28",
+      "metaVersion": "2026-07-28"
+    }
+  },
+  {
+    "id": "sep-2575-client-declares-roots-capability",
+    "name": "ClientDeclaresRootsCapability",
+    "description": "Client declares valid roots capability if present",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.395Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/index#capabilities"
+      }
+    ],
+    "details": {
+      "capabilityValue": {
+        "listChanged": true
+      }
+    }
+  },
+  {
+    "id": "sep-2575-client-declares-sampling-capability",
+    "name": "ClientDeclaresSamplingCapability",
+    "description": "Client declares valid sampling capability if present",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.395Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/index#capabilities"
+      }
+    ],
+    "details": {
+      "capabilityValue": {}
+    }
+  },
+  {
+    "id": "sep-2575-client-declares-elicitation-capability",
+    "name": "ClientDeclaresElicitationCapability",
+    "description": "Client declares valid elicitation capability if present",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.395Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/index#capabilities"
+      }
+    ],
+    "details": {
+      "capabilityValue": {}
+    }
+  },
+  {
+    "id": "sep-2575-client-retry-supported-version",
+    "name": "ClientRetrySupportedVersion",
+    "description": "Client retries with a supported version when first choice is rejected",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:30:34.383Z",
+    "specReferences": [
+      {
+        "id": "SEP-2575",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/transports#protocol-version-header"
+      }
+    ],
+    "details": {
+      "headerVersion": "2026-07-28",
+      "retryHeaderVersion": "2026-07-28",
+      "retryMetaVersion": "2026-07-28"
+    }
+  }
+]

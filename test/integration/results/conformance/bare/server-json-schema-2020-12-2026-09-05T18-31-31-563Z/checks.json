@@ -1,0 +1,57 @@
+[
+  {
+    "id": "json-schema-2020-12-tool-found",
+    "name": "JsonSchema2020_12ToolFound",
+    "description": "Server advertises tool 'json_schema_2020_12_tool'",
+    "status": "FAILURE",
+    "timestamp": "2026-09-05T18:31:31.565Z",
+    "errorMessage": "Tool 'json_schema_2020_12_tool' not found. Available tools: test_simple_text, test_image_content, test_audio_content, test_embedded_resource, test_multiple_content_types, test_tool_with_logging, test_logging_tool, test_tool_with_progress, test_error_handling, test_missing_capability, test_streaming_elicitation, test_input_required_result_elicitation, test_input_required_result_sampling, test_input_required_result_list_roots, test_input_required_result_request_state, test_input_required_result_multiple_inputs, test_input_required_result_multi_round, test_input_required_result_tampered_state, test_input_required_result_capabilities",
+    "specReferences": [
+      {
+        "id": "SEP-1613",
+        "url": "https://github.com/modelcontextprotocol/specification/pull/655"
+      }
+    ],
+    "details": {
+      "toolFound": false,
+      "availableTools": [
+        "test_simple_text",
+        "test_image_content",
+        "test_audio_content",
+        "test_embedded_resource",
+        "test_multiple_content_types",
+        "test_tool_with_logging",
+        "test_logging_tool",
+        "test_tool_with_progress",
+        "test_error_handling",
+        "test_missing_capability",
+        "test_streaming_elicitation",
+        "test_input_required_result_elicitation",
+        "test_input_required_result_sampling",
+        "test_input_required_result_list_roots",
+        "test_input_required_result_request_state",
+        "test_input_required_result_multiple_inputs",
+        "test_input_required_result_multi_round",
+        "test_input_required_result_tampered_state",
+        "test_input_required_result_capabilities"
+      ]
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.565Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 2,
+      "violations": []
+    }
+  }
+]

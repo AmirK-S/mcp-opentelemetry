@@ -1,0 +1,139 @@
+[
+  {
+    "id": "sep-2322-multi-round-r1",
+    "name": "InputRequiredResultMultiRoundR1",
+    "description": "Round 1: Server returns InputRequiredResult with requestState",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.462Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "resultType": "input_required",
+        "inputRequests": {
+          "step1": {
+            "method": "elicitation/create",
+            "params": {
+              "message": "Step 1: What is your name?",
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "mode": "form"
+            }
+          }
+        },
+        "requestState": "v1.eyJwIjp7InRvb2wiOiJtdWx0aV9yb3VuZCIsInJvdW5kIjoxfSwiZXhwIjoxNzg4NjMzNjkxfQ.C6JEPg_Or5W3DCxIt8z8oeSo9riBvvUxYRJtz98lN5o",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "sep-2322-multi-round-r2",
+    "name": "InputRequiredResultMultiRoundR2",
+    "description": "Round 2: Server returns another InputRequiredResult with updated requestState",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.464Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "resultType": "input_required",
+        "inputRequests": {
+          "step2": {
+            "method": "elicitation/create",
+            "params": {
+              "message": "Step 2: What is your favorite color?",
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "color"
+                ]
+              },
+              "mode": "form"
+            }
+          }
+        },
+        "requestState": "v1.eyJwIjp7InRvb2wiOiJtdWx0aV9yb3VuZCIsInJvdW5kIjoyLCJuYW1lIjoiQWxpY2UifSwiZXhwIjoxNzg4NjMzNjkxfQ.5F9KilZHnVYigjbhs4gS5QuKhQCdsJnQKtyQK-sVKQo",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "sep-2322-multi-round-r3",
+    "name": "InputRequiredResultMultiRoundR3",
+    "description": "Round 3: Server returns complete result",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.467Z",
+    "specReferences": [
+      {
+        "id": "SEP-2322",
+        "url": "https://modelcontextprotocol.io/specification/draft/basic/utilities/mrtr"
+      }
+    ],
+    "details": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Done: Alice likes blue"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "mcp-otel-conformance-server",
+            "version": "0.1.0"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wire-schema-valid",
+    "name": "WireSchemaValid",
+    "description": "Every JSON-RPC message the implementation sent is valid per the spec JSON schema for the negotiated spec version",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-05T18:31:31.467Z",
+    "specReferences": [
+      {
+        "id": "MCP-Schema",
+        "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/draft/schema.json"
+      }
+    ],
+    "details": {
+      "messagesValidated": 6,
+      "violations": []
+    }
+  }
+]
