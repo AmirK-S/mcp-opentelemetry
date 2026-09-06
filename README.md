@@ -16,7 +16,7 @@ No fork, no `--require`, no module-level monkey patching: you pass the transport
 ## Status
 
 - Version 0.2.0. Targets `@modelcontextprotocol/*` 2.0.0, the first release line that speaks `2026-07-28`. The 1.x SDK is not supported. Node 20 or later.
-- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage` and `elicitation/create` are tested; `roots/list` and `ping` take the same path), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications too: `notifications/progress` emitted from a tool carries the tool's context, `notifications/cancelled` is parented to the request it cancels. Metrics are not implemented yet (see Roadmap).
+- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage` and `elicitation/create` are tested; `roots/list` and `ping` take the same path), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications too: `notifications/progress` emitted from a tool carries the tool's context, `notifications/cancelled` is parented to the request it cancels. The four duration histograms of the convention are recorded.
 - The MCP semantic conventions are at status Development and may change. While they are, a minor version of this package may rename attributes; patch versions never change what is emitted. Attribute names live in one module of this package, checked by a test against `@opentelemetry/semantic-conventions` 1.43.0. Read [docs/END-OF-LIFE.md](https://github.com/AmirK-S/mcp-opentelemetry/blob/main/docs/END-OF-LIFE.md) before depending on this in production.
 
 Dependencies are pinned in `package-lock.json`; the tested combinations are:
@@ -104,6 +104,8 @@ Every function takes an optional second argument:
 | `captureResults` | `false` | record `gen_ai.tool.call.result` (tool results may be sensitive) |
 | `resourceUriInSpanName` | `false` | put the uri in the span name of `resources/read`; the convention marks this opt-in because of cardinality and because a uri can carry a path |
 | `instrumentNotifications` | `true` | inject into and open spans for notifications |
+| `meterProvider` | global meter provider of `@opentelemetry/api` | where the histograms come from |
+| `instrumentMetrics` | `true` | record the four duration histograms |
 | `networkTransport` | detected from the transport class | value of `network.transport` (`pipe` for stdio, `tcp` for HTTP) |
 | `serverAddress`, `serverPort` | unset | values of `server.address` and `server.port` |
 
@@ -150,6 +152,19 @@ The span status is `ERROR` on a JSON-RPC error, on `isError`, and on a failed wr
 
 `mcp.session.id` is not recorded: revision `2026-07-28` removed protocol sessions.
 
+### Metrics
+
+The four histograms of the convention, in seconds, with its explicit bucket boundaries (`DURATION_BUCKET_BOUNDARIES`, from 10 ms to 300 s):
+
+| Metric | Recorded when | Attributes |
+| --- | --- | --- |
+| `mcp.client.operation.duration` | a request this side sent is answered, or a notification it sent is written | `mcp.method.name`, `gen_ai.tool.name`, `gen_ai.prompt.name`, `gen_ai.operation.name`, `mcp.protocol.version`, `network.transport`, `server.address`, `server.port`, `error.type`, `rpc.response.status_code` |
+| `mcp.server.operation.duration` | the response to a request this side received is written, or a notification it received is dispatched | same |
+| `mcp.client.session.duration` | the transport of an `instrumentClientTransport` closes | `mcp.protocol.version`, `network.transport`, `server.address`, `server.port` |
+| `mcp.server.session.duration` | the transport of an `instrumentServerTransport` closes | same |
+
+Identifiers (`jsonrpc.request.id`), the resource uri and the opt-in payloads never go on a metric. A session is measured from `start()` to `close()`; on the server side of `createMcpHandler` that is one HTTP request.
+
 ### Parenting
 
 - The context carried by `_meta` is the parent of the `SERVER` span, on whichever side receives the request. An ambient context on the receiving side, for instance the span of the incoming HTTP request opened by another instrumentation, becomes a **link**, not a parent, as the convention asks. Transport and MCP contexts are independent.
@@ -165,7 +180,6 @@ A complete `_meta` with the two required envelope keys, a 512 character `tracest
 
 - HTTP requests rejected before the transport (missing `Mcp-Method` header, a 2025-era opening on a modern-only route, 405) never reach the instrumentation and produce no span. Put an HTTP instrumentation in front if you need them.
 - Hosts that send no `traceparent` start the trace at the server. Measured on 2026-09-05: Claude Code 2.1.261 speaks `2025-11-25` and puts only `progressToken` and `claudecode/toolUseId` in `_meta`, so a server behind it produces root spans, one per tool call.
-- No metrics yet. The four duration metrics of the convention are the next step.
 - The `SERVER` span of a notification does not cover the handler: the SDK hands notifications to their handler in a later microtask, out of reach of the transport.
 - ESM only. A CommonJS build can be added if someone needs it; the SDK 2.x ships both, so the constraint comes from this package, not from the SDK.
 - Instrument a transport before `connect()`. Applied later, the package wraps the callbacks already installed, but the messages that went through before are not seen.
@@ -201,7 +215,7 @@ Measured on 2026-09-06 by reading the published code of each package, never its 
 
 | Package | Version (date) | Targets | Propagates via `_meta` | Spans | Convention attributes (required present/missing) | Notifications | Metrics | Content capture default | Last release |
 |---|---|---|---|---|---|---|---|---|---|
-| `mcp-opentelemetry` (this) | 0.2.0 | TS SDK 2.x, protocol `2026-07-28` | yes, requests in both directions and notifications | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | yes, both directions | none | off (`captureArguments`, `captureResults`) | n/a |
+| `mcp-opentelemetry` (this) | 0.2.0 | TS SDK 2.x, protocol `2026-07-28` | yes, requests in both directions and notifications | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | yes, both directions | the four histograms of the convention | off (`captureArguments`, `captureResults`) | n/a |
 | `mcp` (Python SDK, built in) | 2.1.1 (2026-08-25) | itself | yes, requests only (outbound); extracts on requests and notifications | CLIENT + SERVER; server name conforms, client name prefixed `MCP send` | 1/1 required, 5/6 conditional (`mcp.resource.uri` missing), 0 off-convention | inbound only | none | off | 2026-08-25 |
 | `@arizeai/openinference-instrumentation-mcp` | 0.2.30 (2026-09-04) | TS SDK 1.x | yes, requests only | none | no attributes | no (by design) | none | n/a | 2026-09-04 |
 | `openinference-instrumentation-mcp` (Python) | 2.0.9 (2026-09-04) | `mcp >= 1.24.0` | yes, requests only | none | no attributes | no | none | n/a | 2026-09-04 |
@@ -215,14 +229,14 @@ Measured on 2026-09-06 by reading the published code of each package, never its 
 | `@theharithsa/opentelemetry-instrumentation-mcp` | 1.0.4 (2025-09-26) | `@modelcontextprotocol/sdk >=0.0.0` | no | no kind, `mcp.tool:{name}` | 0/1 required, 0/6 conditional, 0 attributes | no | none | none | 2025-09-26 |
 | `@modelcontextprotocol/{core,client,server}` (TS SDK) | 2.0.0 (2026-07-27) | itself | constants only (`TRACEPARENT_META_KEY`, `TRACESTATE_META_KEY`, `BAGGAGE_META_KEY`) | none | n/a | n/a | none | n/a | 2026-07-27 |
 
-Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; it is also missing every metric, which the table shows (the server-initiated direction and the notifications were added in 0.2.0, after the measurement; the row reflects 0.2.0).
+Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; the matrix was measured on 0.1.0; the row reflects 0.2.0, which added the server-initiated direction, the notifications and the four metrics after the measurement.
 
 The MCP TypeScript SDK itself exports the three key constants and a passthrough test since PR #2270, and nothing else: no span, no injection, no extraction. The tracking issue #2196 carries a scoping comment recommending that this live in a middleware package rather than in the SDK core, with `@opentelemetry/api` kept out of the published packages' hard dependencies. This package takes that shape from the outside.
 
 ## Roadmap
 
-1. The four duration metrics of the convention.
-2. A measured overhead figure per request.
+1. A measured overhead figure per request.
+2. `client.address` and `client.port` on the server side when the transport exposes them.
 
 ## Contributing, issues and security
 

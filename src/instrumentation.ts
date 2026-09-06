@@ -1,6 +1,7 @@
 import {
   context,
   diag,
+  metrics,
   propagation,
   ROOT_CONTEXT,
   SpanKind,
@@ -8,7 +9,9 @@ import {
   trace,
   type Attributes,
   type Context,
+  type Histogram,
   type Link,
+  type Meter,
   type Span,
   type TextMapGetter,
   type TextMapPropagator,
@@ -34,6 +37,10 @@ import {
   ATTR_SERVER_PORT,
   ERROR_TYPE_VALUE_TOOL_ERROR,
   GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL,
+  METRIC_MCP_CLIENT_OPERATION_DURATION,
+  METRIC_MCP_CLIENT_SESSION_DURATION,
+  METRIC_MCP_SERVER_OPERATION_DURATION,
+  METRIC_MCP_SERVER_SESSION_DURATION,
 } from './semconv.js';
 import type {
   Connectable,
@@ -71,7 +78,14 @@ export interface McpInstrumentationOptions {
   resourceUriInSpanName?: boolean | undefined;
   /** Propagate into and open spans for notifications. On by default. */
   instrumentNotifications?: boolean | undefined;
+  /** Defaults to the global meter provider of `@opentelemetry/api`. */
+  meterProvider?: { getMeter(name: string, version?: string): Meter } | undefined;
+  /** Record the four duration histograms of the convention. On by default. */
+  instrumentMetrics?: boolean | undefined;
 }
+
+/** Bucket boundaries the convention recommends for its four duration histograms, in seconds. */
+export const DURATION_BUCKET_BOUNDARIES = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 120, 300];
 
 export type Role = 'client' | 'server';
 
@@ -158,6 +172,24 @@ function safeStringify(value: unknown): string {
 interface Pending {
   span: Span;
   method: string;
+  /** Sent by this side (`outbound`) or received by it (`inbound`). */
+  direction: 'outbound' | 'inbound';
+  startedAt: number;
+  /** Low-cardinality attributes shared by the span and the duration metric. */
+  metricAttributes: Attributes;
+}
+
+/** Span attributes that never go on a metric: identifiers and opt-in payloads. */
+const NOT_ON_METRICS = new Set<string>([ATTR_JSONRPC_REQUEST_ID, ATTR_MCP_RESOURCE_URI, ATTR_GEN_AI_TOOL_CALL_ARGUMENTS, ATTR_GEN_AI_TOOL_CALL_RESULT]);
+
+function metricAttributesOf(attributes: Attributes): Attributes {
+  const out: Attributes = {};
+  for (const [key, value] of Object.entries(attributes)) if (!NOT_ON_METRICS.has(key)) out[key] = value;
+  return out;
+}
+
+function seconds(sinceMs: number): number {
+  return (performance.now() - sinceMs) / 1000;
 }
 
 class TransportState {
@@ -167,13 +199,57 @@ class TransportState {
   readonly inbound = new Map<string, Pending>();
   negotiatedProtocolVersion: string | undefined;
 
+  private readonly meter: Meter | undefined;
+  private histograms: { clientOperation: Histogram; serverOperation: Histogram; session: Histogram } | undefined;
+  private sessionStartedAt: number | undefined;
+  private sessionRecorded = false;
+
   constructor(
     readonly role: Role,
     readonly tracer: Tracer,
     readonly propagator: TextMapPropagator,
     readonly options: McpInstrumentationOptions,
     readonly staticAttributes: Attributes,
-  ) {}
+  ) {
+    if (options.instrumentMetrics !== false) this.meter = (options.meterProvider ?? metrics.getMeterProvider()).getMeter(PACKAGE_NAME, PACKAGE_VERSION);
+  }
+
+  private instruments() {
+    if (this.histograms === undefined && this.meter !== undefined) {
+      const advice = { explicitBucketBoundaries: DURATION_BUCKET_BOUNDARIES };
+      this.histograms = {
+        clientOperation: this.meter.createHistogram(METRIC_MCP_CLIENT_OPERATION_DURATION, { unit: 's', description: 'Duration of an MCP request or notification as observed on the sender', advice }),
+        serverOperation: this.meter.createHistogram(METRIC_MCP_SERVER_OPERATION_DURATION, { unit: 's', description: 'Duration of an MCP request or notification as observed on the receiver', advice }),
+        session: this.meter.createHistogram(this.role === 'client' ? METRIC_MCP_CLIENT_SESSION_DURATION : METRIC_MCP_SERVER_SESSION_DURATION, { unit: 's', description: 'Duration of an MCP session', advice }),
+      };
+    }
+    return this.histograms;
+  }
+
+  pending(span: Span, method: string, direction: 'outbound' | 'inbound', attributes: Attributes): Pending {
+    return { span, method, direction, startedAt: performance.now(), metricAttributes: metricAttributesOf(attributes) };
+  }
+
+  recordOperation(pending: Pending, extra: Attributes = {}): void {
+    const h = this.instruments();
+    if (h === undefined) return;
+    const attributes = { ...pending.metricAttributes, ...extra };
+    (pending.direction === 'outbound' ? h.clientOperation : h.serverOperation).record(seconds(pending.startedAt), attributes);
+  }
+
+  sessionStarted(): void {
+    this.sessionStartedAt ??= performance.now();
+  }
+
+  sessionEnded(): void {
+    if (this.sessionRecorded || this.sessionStartedAt === undefined) return;
+    this.sessionRecorded = true;
+    const h = this.instruments();
+    if (h === undefined) return;
+    const attributes: Attributes = { ...this.staticAttributes };
+    if (this.negotiatedProtocolVersion !== undefined) attributes[ATTR_MCP_PROTOCOL_VERSION] = this.negotiatedProtocolVersion;
+    h.session.record(seconds(this.sessionStartedAt), attributes);
+  }
 
   startAttributes(request: JsonRpcRequestLike): Attributes {
     const attributes: Attributes = {
@@ -224,18 +300,28 @@ class TransportState {
 
   finish(pending: Pending, message: JsonRpcResultLike | JsonRpcErrorLike): void {
     const { span, method } = pending;
+    const extra: Attributes = {};
     if ('error' in message) {
       const code = String(message.error.code);
-      span.setAttribute(ATTR_ERROR_TYPE, code);
-      span.setAttribute(ATTR_RPC_RESPONSE_STATUS_CODE, code);
+      extra[ATTR_ERROR_TYPE] = code;
+      extra[ATTR_RPC_RESPONSE_STATUS_CODE] = code;
+      span.setAttributes(extra);
       span.setStatus({ code: SpanStatusCode.ERROR, message: message.error.message });
     } else if (message.result['isError'] === true) {
-      span.setAttribute(ATTR_ERROR_TYPE, ERROR_TYPE_VALUE_TOOL_ERROR);
+      extra[ATTR_ERROR_TYPE] = ERROR_TYPE_VALUE_TOOL_ERROR;
+      span.setAttributes(extra);
       span.setStatus({ code: SpanStatusCode.ERROR });
     } else if (method === 'tools/call' && this.options.captureResults) {
       span.setAttribute(ATTR_GEN_AI_TOOL_CALL_RESULT, safeStringify(message.result));
     }
     span.end();
+    this.recordOperation(pending, extra);
+  }
+
+  /** A notification was written or dispatched: no response to wait for. */
+  acknowledge(pending: Pending): void {
+    pending.span.end();
+    this.recordOperation(pending);
   }
 
   fail(pending: Pending, errorType: string, error?: unknown): void {
@@ -244,6 +330,7 @@ class TransportState {
     if (error instanceof Error) span.recordException(error);
     span.setStatus(error instanceof Error ? { code: SpanStatusCode.ERROR, message: error.message } : { code: SpanStatusCode.ERROR });
     span.end();
+    this.recordOperation(pending, { [ATTR_ERROR_TYPE]: errorType });
   }
 
   /** A response arrived: settle the span of the request this side sent. */
@@ -260,6 +347,7 @@ class TransportState {
     for (const pending of [...this.outbound.values(), ...this.inbound.values()]) this.fail(pending, ERROR_TYPE_VALUE_CONNECTION_CLOSED);
     this.outbound.clear();
     this.inbound.clear();
+    this.sessionEnded();
   }
 }
 
@@ -374,13 +462,15 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
         state.fail(cancelled, ERROR_TYPE_VALUE_CANCELLED);
       }
     }
-    const span = state.tracer.startSpan(message.method, { kind: SpanKind.CLIENT, attributes: state.notificationAttributes(message) }, parent);
+    const attributes = state.notificationAttributes(message);
+    const span = state.tracer.startSpan(message.method, { kind: SpanKind.CLIENT, attributes }, parent);
+    const pending = state.pending(span, message.method, 'outbound', attributes);
     const ctx = trace.setSpan(parent, span);
     state.propagator.inject(ctx, ownMeta(message), metaSetter);
     return context.with(ctx, () => send(message, options)).then(
-      () => span.end(),
+      () => state.acknowledge(pending),
       (error: unknown) => {
-        state.fail({ span, method: message.method }, error instanceof Error ? error.name : 'send_failed', error);
+        state.fail(pending, error instanceof Error ? error.name : 'send_failed', error);
         throw error;
       },
     );
@@ -388,7 +478,8 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
 
   function sendRequest(message: JsonRpcRequestLike, options?: unknown): Promise<void> {
     const parent = context.active();
-    const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.CLIENT, attributes: state.startAttributes(message) }, parent);
+    const attributes = state.startAttributes(message);
+    const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.CLIENT, attributes }, parent);
     const ctx = trace.setSpan(parent, span);
     const meta = ownMeta(message);
     state.propagator.inject(ctx, meta, metaSetter);
@@ -400,7 +491,7 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
       if (written < expected) diag.debug(`${PACKAGE_NAME}: ${expected - written} baggage entries dropped by the propagator limits on ${message.method}`);
     }
 
-    const pending: Pending = { span, method: message.method };
+    const pending = state.pending(span, message.method, 'outbound', attributes);
     const key = pendingKey(message.id);
     state.outbound.set(key, pending);
     return context.with(ctx, () => send(message, options)).catch((error: unknown) => {
@@ -449,7 +540,9 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
 
   function receiveNotification(message: JsonRpcNotificationLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
     const { parent, links } = inboundParent(message);
-    const span = state.tracer.startSpan(message.method, { kind: SpanKind.SERVER, attributes: state.notificationAttributes(message), links }, parent);
+    const attributes = state.notificationAttributes(message);
+    const span = state.tracer.startSpan(message.method, { kind: SpanKind.SERVER, attributes, links }, parent);
+    const pending = state.pending(span, message.method, 'inbound', attributes);
     const ctx = trace.setSpan(parent, span);
     state.propagator.inject(ctx, ownMeta(message), metaSetter);
     try {
@@ -457,14 +550,15 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
     } finally {
       // The SDK hands notifications to their handler in a later microtask;
       // the span covers the dispatch, not the handler.
-      span.end();
+      state.acknowledge(pending);
     }
   }
 
   function receiveRequest(message: JsonRpcRequestLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
     const { parent, links } = inboundParent(message);
-    const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.SERVER, attributes: state.startAttributes(message), links }, parent);
-    state.inbound.set(pendingKey(message.id), { span, method: message.method });
+    const attributes = state.startAttributes(message);
+    const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.SERVER, attributes, links }, parent);
+    state.inbound.set(pendingKey(message.id), state.pending(span, message.method, 'inbound', attributes));
     const ctx = trace.setSpan(parent, span);
 
     // Rewrite the carried context so that it names the server span. Anything
@@ -493,6 +587,7 @@ function instrumentTransport<T extends TransportLike>(transport: T, role: Role, 
   transport.start = () => {
     reattachMessage();
     reattachClose();
+    state.sessionStarted();
     return start();
   };
   const close = transport.close.bind(transport);
