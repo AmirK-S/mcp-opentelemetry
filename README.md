@@ -189,18 +189,25 @@ The client prints the trace id and the Jaeger link. The trace shows `agent`, the
 
 ## Where this sits in the ecosystem
 
-Measured on 2026-09-05 by reading each package from the registry. "Propagates" means the W3C context crosses the process boundary in `params._meta`; "convention" means the span names and attributes follow the OpenTelemetry MCP conventions.
+Measured on 2026-09-06 by reading the published code of each package, never its README; `scripts/measure-ecosystem.sh` downloads every package and runs the greps behind each cell. Reference: `open-telemetry/semantic-conventions-genai`, `docs/gen-ai/mcp.md` at revision `94f432d` (2026-09-03). "Required" is `mcp.method.name`; "conditional" are the six conditionally required attributes (`error.type`, `gen_ai.prompt.name`, `gen_ai.tool.name`, `jsonrpc.request.id`, `mcp.resource.uri`, `rpc.response.status_code`); "off-convention" counts attribute keys the convention does not define.
 
-| Package | Version, date | Targets | Propagates | Spans | Convention | Notifications | Metrics |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `mcp-opentelemetry` (this) | 0.1.0 | SDK TS 2.x, `2026-07-28` | yes, client-initiated requests | client and server | yes | not yet | not yet |
-| `@arizeai/openinference-instrumentation-mcp` | 0.2.30, 2026-09-04 | SDK TS 1.x | yes | none | no attributes | ignored on purpose | no |
-| `@traceloop/instrumentation-mcp` | 0.27.0, 2026-06-01 | SDK TS 1.x | no | yes, `{tool}.tool`, `{method}.mcp` | proprietary `traceloop.*` | no | no |
-| `@shinzolabs/instrumentation-mcp` | 1.1.0, 2025-12-01 | SDK TS 1.x | not measured | not measured | not measured | no | no |
-| `mcp-otel` | 0.1.1, 2026-06-21 | SDK TS 1.x | server side only | server only, per handler | `mcp.tool.name`, `mcp.request.id`, `mcp.method` | no | no |
-| `mcp-trace` | 0.2.0, 2025-10-29 | SDK TS 1.x | no | logging to files and OTLP | no | no | no |
-| `mcp` (Python SDK, built in) | 2.1.1, 2026-08-25 | Python | yes | client and server, on by default | server yes, client span named `MCP send ...` | no | no |
-| `openinference-instrumentation-mcp` (Python) | 2.0.9, 2026-09-04 | Python | yes | none | no attributes | no | no |
+| Package | Version (date) | Targets | Propagates via `_meta` | Spans | Convention attributes (required present/missing) | Notifications | Metrics | Content capture default | Last release |
+|---|---|---|---|---|---|---|---|---|---|
+| `mcp-opentelemetry` (this) | 0.1.0 | TS SDK 2.x, protocol `2026-07-28` | yes, client-initiated requests only | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | no | none | off (`captureArguments`, `captureResults`) | n/a |
+| `mcp` (Python SDK, built in) | 2.1.1 (2026-08-25) | itself | yes, requests only (outbound); extracts on requests and notifications | CLIENT + SERVER; server name conforms, client name prefixed `MCP send` | 1/1 required, 5/6 conditional (`mcp.resource.uri` missing), 0 off-convention | inbound only | none | off | 2026-08-25 |
+| `@arizeai/openinference-instrumentation-mcp` | 0.2.30 (2026-09-04) | TS SDK 1.x | yes, requests only | none | no attributes | no (by design) | none | n/a | 2026-09-04 |
+| `openinference-instrumentation-mcp` (Python) | 2.0.9 (2026-09-04) | `mcp >= 1.24.0` | yes, requests only | none | no attributes | no | none | n/a | 2026-09-04 |
+| `@monocle.sh/instrumentation-mcp` | 1.0.2 (2026-05-17) | TS SDK 1.x | no | SERVER + CLIENT, `{method} {target}` (resource URI in the name by default) | 1/1 required, 1/6 conditional, 15 off-convention | yes, both directions | none | off (`recordInputs`, `recordOutputs`) | 2026-05-17 |
+| `@shinzolabs/instrumentation-mcp` | 1.1.0 (2025-12-01) | TS SDK `^1.15.1` | no | INTERNAL (no kind), `{method} {tool}` | 1/1 required, 1/6 conditional, 3 off-convention | no (stubbed `// TODO`) | `mcp.server.operation.duration` (declared in ms, not s) and `mcp.server.session.duration` (declared in s, recorded in ms) + a per-tool counter with a dynamic name | off (`enableArgumentCollection`) | 2025-12-01 |
+| `mcp-otel` | 0.1.1 (2026-06-21) | TS SDK `>=1.10.0 <2` | inject exported but never wired; extracts on the server | SERVER, `{method} {tool}` | 0/1 required (`mcp.method` not `mcp.method.name`), 0/6 conditional, 3 off-convention | no | none | none | 2026-06-21 |
+| `opentelemetry-instrumentation-mcp` (Traceloop, Python) | 0.62.3 (2026-08-10) | `mcp >= 1.6.0` | partial: `traceparent` only, and only when `_meta` already exists | no kind, `{tool}.tool` / `{method}.mcp` | 0/1 required, 1/6 conditional, 6 off-convention | no | none | **on** | 2026-08-10 |
+| `@traceloop/instrumentation-mcp` | 0.27.0 (2026-06-01) | TS SDK `>=1.0.0` | no | CLIENT + SERVER, `{tool}.tool` / `{method}.mcp` | 0/1 required, 0/6 conditional, 4 off-convention | no | none | **on** (`traceContent`) | 2026-06-01 |
+| `logfire` (MCP part) | 5.0.0 (2026-09-04) | Python `mcp` | yes, requests **and** notifications | no kind, `MCP request: {method} {tool}` | 0/1 required, 0/6 conditional, 5 off-convention | propagated; only logging notifications recorded | none | **on**, not separately switchable | 2026-09-04 |
+| `mcp-trace` | 0.2.0 (2025-10-29) | TS SDK `^1.15.0` | no | no kind, `{type} {method} {entity}` (OTLP adapter only) | 0/1 required, 0/6 conditional, 16 off-convention | logged both ways, not typed | none | **on** (`logFields`) | 2025-10-29 |
+| `@theharithsa/opentelemetry-instrumentation-mcp` | 1.0.4 (2025-09-26) | `@modelcontextprotocol/sdk >=0.0.0` | no | no kind, `mcp.tool:{name}` | 0/1 required, 0/6 conditional, 0 attributes | no | none | none | 2025-09-26 |
+| `@modelcontextprotocol/{core,client,server}` (TS SDK) | 2.0.0 (2026-07-27) | itself | constants only (`TRACEPARENT_META_KEY`, `TRACESTATE_META_KEY`, `BAGGAGE_META_KEY`) | none | n/a | n/a | none | n/a | 2026-07-27 |
+
+Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; it is also missing the whole server-initiated direction, every notification and every metric, which the table shows.
 
 The MCP TypeScript SDK itself exports the three key constants and a passthrough test since PR #2270, and nothing else: no span, no injection, no extraction. The tracking issue #2196 carries a scoping comment recommending that this live in a middleware package rather than in the SDK core, with `@opentelemetry/api` kept out of the published packages' hard dependencies. This package takes that shape from the outside.
 
