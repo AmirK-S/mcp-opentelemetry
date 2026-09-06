@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `resourceUriInSpanName` option, off by default as the convention asks.
 - `SECURITY.md`, `CONTRIBUTING.md`, end-of-life note.
 
-### Known limits
+Not covered in this release:
 
 - Not yet covered: requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) get no span and no `traceparent`; planned for 0.2.0.
 - Notifications are passed through without injection. No metrics. ESM only.

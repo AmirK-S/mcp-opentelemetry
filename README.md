@@ -19,6 +19,8 @@ No fork, no `--require`, no module-level monkey patching: you pass the transport
 - Client-initiated requests only. `tools/call`, `tools/list` and every other request the client sends gets a span. Requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) are passed through: no span, no injection. Notifications and metrics are not instrumented yet (see Roadmap).
 - The MCP semantic conventions are at status Development and may change. While they are, a minor version of this package may rename attributes; patch versions never change what is emitted. Attribute names live in one module of this package, checked by a test against `@opentelemetry/semantic-conventions` 1.43.0. Read [docs/END-OF-LIFE.md](https://github.com/AmirK-S/mcp-opentelemetry/blob/main/docs/END-OF-LIFE.md) before depending on this in production.
 
+Dependencies are pinned in `package-lock.json`; the tested combinations are:
+
 | mcp-opentelemetry | MCP SDK | `@opentelemetry/api` | Node |
 | --- | --- | --- | --- |
 | 0.1.x | `@modelcontextprotocol/{client,server,core}` 2.0.x | 1.9 or later | 20, 22, 24 (tested in CI) |
@@ -220,7 +222,7 @@ The MCP TypeScript SDK itself exports the three key constants and a passthrough 
 
 ## Contributing, issues and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Issues get an answer within seven days; that answer is not a commitment to ship a feature. Versions are pinned in `package-lock.json`, and the tested combinations are in the table under Status.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Issues get an answer within seven days; that answer is not a commitment to ship what is asked. The roadmap above is what the author intends to do, in that order.
 
 ## References
 
