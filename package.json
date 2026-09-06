@@ -1,6 +1,6 @@
 {
   "name": "mcp-opentelemetry",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OpenTelemetry instrumentation for the MCP TypeScript SDK v2 (protocol revision 2026-07-28): W3C Trace Context propagation through params._meta and spans that follow the OpenTelemetry semantic conventions for MCP.",
   "type": "module",
   "main": "./dist/index.js",

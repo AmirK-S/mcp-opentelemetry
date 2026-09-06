@@ -152,7 +152,10 @@ interface Pending {
 }
 
 class TransportState {
-  readonly pending = new Map<string, Pending>();
+  /** Spans of the requests this side sent, waiting for a response. */
+  readonly outbound = new Map<string, Pending>();
+  /** Spans of the requests this side received, waiting for the response to be written. */
+  readonly inbound = new Map<string, Pending>();
   negotiatedProtocolVersion: string | undefined;
 
   constructor(
@@ -226,19 +229,20 @@ class TransportState {
     span.end();
   }
 
-  settle(message: JsonRpcMessageLike): void {
-    if (!isResponse(message)) return;
+  /** A response arrived: settle the span of the request this side sent. */
+  settle(message: JsonRpcResultLike | JsonRpcErrorLike): void {
     const key = pendingKey(message.id);
-    const pending = this.pending.get(key);
+    const pending = this.outbound.get(key);
     if (!pending) return;
-    this.pending.delete(key);
+    this.outbound.delete(key);
     this.learnProtocolVersion(pending, message);
     this.finish(pending, message);
   }
 
   closeAll(): void {
-    for (const pending of this.pending.values()) this.fail(pending, ERROR_TYPE_VALUE_CONNECTION_CLOSED);
-    this.pending.clear();
+    for (const pending of [...this.outbound.values(), ...this.inbound.values()]) this.fail(pending, ERROR_TYPE_VALUE_CONNECTION_CLOSED);
+    this.outbound.clear();
+    this.inbound.clear();
   }
 }
 
@@ -319,13 +323,25 @@ function countBaggagePairs(serialized: unknown): number {
   return typeof serialized === 'string' && serialized.length > 0 ? serialized.split(',').length : 0;
 }
 
-/* ------------------------------------------------------------------ client */
+/* -------------------------------------------------------------------- peer */
 
-function instrumentAsClient(transport: TransportLike, state: TransportState): () => void {
+/**
+ * Both sides are instrumented the same way, because both sides send and
+ * receive requests: the client sends tools/call, the server sends
+ * sampling/createMessage or elicitation/create back. An outgoing request opens
+ * a CLIENT span and injects into params._meta; an incoming request extracts
+ * params._meta and opens a SERVER span active around the dispatch; responses
+ * settle the span of the request they answer.
+ */
+function instrumentAsPeer(transport: TransportLike, state: TransportState): () => void {
   const send = transport.send.bind(transport);
   transport.send = (message: JsonRpcMessageLike, options?: unknown): Promise<void> => {
-    if (!isRequest(message)) return send(message, options);
+    if (isRequest(message)) return sendRequest(message, options);
+    if (isResponse(message)) return sendResponse(message, options);
+    return send(message, options);
+  };
 
+  function sendRequest(message: JsonRpcRequestLike, options?: unknown): Promise<void> {
     const parent = context.active();
     const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.CLIENT, attributes: state.startAttributes(message) }, parent);
     const ctx = trace.setSpan(parent, span);
@@ -340,25 +356,36 @@ function instrumentAsClient(transport: TransportLike, state: TransportState): ()
     }
 
     const pending: Pending = { span, method: message.method };
-    state.pending.set(pendingKey(message.id), pending);
+    const key = pendingKey(message.id);
+    state.outbound.set(key, pending);
     return context.with(ctx, () => send(message, options)).catch((error: unknown) => {
-      if (state.pending.delete(pendingKey(message.id))) state.fail(pending, error instanceof Error ? error.name : 'send_failed', error);
+      if (state.outbound.delete(key)) state.fail(pending, error instanceof Error ? error.name : 'send_failed', error);
       throw error;
     });
-  };
+  }
+
+  function sendResponse(message: JsonRpcResultLike | JsonRpcErrorLike, options?: unknown): Promise<void> {
+    const key = pendingKey(message.id);
+    const pending = state.inbound.get(key);
+    if (!pending) return send(message, options);
+    state.inbound.delete(key);
+    state.learnProtocolVersion(pending, message);
+    return send(message, options).then(
+      () => state.finish(pending, message),
+      (error: unknown) => {
+        state.fail(pending, error instanceof Error ? error.name : 'send_failed', error);
+        throw error;
+      },
+    );
+  }
 
   return interceptCallback(transport, 'onmessage', (fn) => (message: JsonRpcMessageLike, extra?: unknown) => {
-    state.settle(message);
+    if (isRequest(message)) return receiveRequest(message, extra, fn);
+    if (isResponse(message)) state.settle(message);
     return fn(message, extra);
   });
-}
 
-/* ------------------------------------------------------------------ server */
-
-function instrumentAsServer(transport: TransportLike, state: TransportState): () => void {
-  const reattach = interceptCallback(transport, 'onmessage', (fn) => (message: JsonRpcMessageLike, extra?: unknown) => {
-    if (!isRequest(message)) return fn(message, extra);
-
+  function receiveRequest(message: JsonRpcRequestLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
     const ambient = context.active();
     const meta = message.params?._meta;
     const extracted = meta !== undefined && meta !== null && typeof meta === 'object' ? state.propagator.extract(ROOT_CONTEXT, meta, metaGetter) : ROOT_CONTEXT;
@@ -380,7 +407,7 @@ function instrumentAsServer(transport: TransportLike, state: TransportState): ()
     }
 
     const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.SERVER, attributes: state.startAttributes(message), links }, parent);
-    state.pending.set(pendingKey(message.id), { span, method: message.method });
+    state.inbound.set(pendingKey(message.id), { span, method: message.method });
     const ctx = trace.setSpan(parent, span);
 
     // Rewrite the carried context so that it names the server span. Anything
@@ -390,25 +417,7 @@ function instrumentAsServer(transport: TransportLike, state: TransportState): ()
     state.propagator.inject(ctx, ownMeta(message), metaSetter);
 
     return context.with(ctx, () => fn(message, extra));
-  });
-
-  const send = transport.send.bind(transport);
-  transport.send = (message: JsonRpcMessageLike, options?: unknown): Promise<void> => {
-    if (!isResponse(message)) return send(message, options);
-    const key = pendingKey(message.id);
-    const pending = state.pending.get(key);
-    if (!pending) return send(message, options);
-    state.pending.delete(key);
-    state.learnProtocolVersion(pending, message);
-    return send(message, options).then(
-      () => state.finish(pending, message),
-      (error: unknown) => {
-        state.fail(pending, error instanceof Error ? error.name : 'send_failed', error);
-        throw error;
-      },
-    );
-  };
-  return reattach;
+  }
 }
 
 /* ------------------------------------------------------------------ public */
@@ -416,7 +425,7 @@ function instrumentAsServer(transport: TransportLike, state: TransportState): ()
 function instrumentTransport<T extends TransportLike>(transport: T, role: Role, options: McpInstrumentationOptions): T {
   if (isInstrumented(transport)) return transport;
   const state = resolveState(role, transport, options);
-  const reattachMessage = role === 'client' ? instrumentAsClient(transport, state) : instrumentAsServer(transport, state);
+  const reattachMessage = instrumentAsPeer(transport, state);
   const reattachClose = interceptCallback(transport, 'onclose', (fn) => () => {
     state.closeAll();
     return fn();

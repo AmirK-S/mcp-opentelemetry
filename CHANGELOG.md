@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-06
+
+### Added
+
+- Requests initiated by the server (`sampling/createMessage`, `elicitation/create`, `roots/list`, `ping`): the server side opens a `CLIENT` span under the active server span and injects `params._meta`; the client side opens a `SERVER` span parented to it and runs the handler inside it. Both transports now handle both directions, so `instrumentClientTransport` and `instrumentServerTransport` differ only in the role recorded on the object.
+
 ## [0.1.0] - 2026-09-06
 
 ### Added
@@ -28,5 +34,6 @@ Not covered in this release:
 - Notifications are passed through without injection. No metrics. ESM only.
 - HTTP requests rejected before the transport produce no span.
 
-[Unreleased]: https://github.com/AmirK-S/mcp-opentelemetry/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AmirK-S/mcp-opentelemetry/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AmirK-S/mcp-opentelemetry/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AmirK-S/mcp-opentelemetry/releases/tag/v0.1.0

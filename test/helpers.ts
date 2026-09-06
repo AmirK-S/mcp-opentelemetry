@@ -93,6 +93,8 @@ export interface PairOptions {
   serverAmbient?: () => Context;
   /** Delay of the `slow` tool in milliseconds. */
   slowMs?: number;
+  /** Make the client-side sampling handler throw. */
+  clientHandlerThrows?: boolean;
 }
 
 export interface Pair {
@@ -102,8 +104,15 @@ export interface Pair {
   serverTransport: TransportLike;
   wire: Wire;
   observed: HandlerObservation[];
+  /** Observations made inside the client-side handlers of server-initiated requests. */
+  clientObserved: HandlerObservation[];
   negotiatedProtocolVersion(): string | undefined;
   close(): Promise<void>;
+}
+
+function textOf(content: unknown): string {
+  const block = Array.isArray(content) ? content[0] : content;
+  return block && typeof block === 'object' && (block as { type?: unknown }).type === 'text' ? String((block as { text: unknown }).text) : '';
 }
 
 const als = new AsyncLocalStorage<string>();
@@ -158,6 +167,32 @@ export async function connectedPair(options: PairOptions = {}, harness?: OtelHar
     },
   );
 
+  server.registerTool(
+    'ask',
+    { description: 'Asks the client model a question through sampling', inputSchema: { question: z.string() } },
+    async ({ question }, ctx) => {
+      observe(ctx as never);
+      const answer = await ctx.mcpReq.requestSampling({
+        messages: [{ role: 'user', content: { type: 'text', text: question } }],
+        maxTokens: 8,
+      });
+      const text = textOf(answer.content);
+      return { content: [{ type: 'text', text: `model said: ${text}` }] };
+    },
+  );
+  server.registerTool(
+    'confirm',
+    { description: 'Asks the user to confirm through elicitation', inputSchema: {} },
+    async (_args, ctx) => {
+      observe(ctx as never);
+      const result = await ctx.mcpReq.elicitInput({
+        message: 'Proceed?',
+        requestedSchema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+      });
+      return { content: [{ type: 'text', text: `user ${result.action}` }] };
+    },
+  );
+
   server.registerResource('static', 'test://static/readme', { description: 'A static resource' }, async (uri) => ({
     contents: [{ uri: uri.href, text: 'hello' }],
   }));
@@ -169,7 +204,24 @@ export async function connectedPair(options: PairOptions = {}, harness?: OtelHar
   const clientTransport = options.instrumentClient ? options.instrumentClient(rawClientTransport) : rawClientTransport;
   const serverTransport = options.instrumentServer ? options.instrumentServer(rawServerTransport) : rawServerTransport;
 
-  const client = new Client({ name: 'test-client', version: '0.0.0' });
+  const client = new Client({ name: 'test-client', version: '0.0.0' }, { capabilities: { sampling: {}, elicitation: {} } });
+  const clientObserved: HandlerObservation[] = [];
+  const observeOnClient = () => {
+    const child = tracer.startSpan('inside-client-handler');
+    child.end();
+    clientObserved.push({ meta: undefined, activeSpan: trace.getSpan(context.active()), baggageEntries: {}, childSpan: child });
+  };
+  client.setRequestHandler('sampling/createMessage', async (request) => {
+    observeOnClient();
+    if (options.clientHandlerThrows) throw new Error('model unavailable');
+    const last = request.params.messages.at(-1);
+    const text = last ? textOf(last.content) : '';
+    return { model: 'test-model', role: 'assistant' as const, content: { type: 'text' as const, text: `echo ${text}` } };
+  });
+  client.setRequestHandler('elicitation/create', async () => {
+    observeOnClient();
+    return { action: 'accept' as const, content: { ok: true } };
+  });
   await Promise.all([server.connect(serverTransport as never), client.connect(clientTransport as never)]);
 
   return {
@@ -179,6 +231,7 @@ export async function connectedPair(options: PairOptions = {}, harness?: OtelHar
     serverTransport,
     wire,
     observed,
+    clientObserved,
     negotiatedProtocolVersion: () => {
       const init = wire.serverToClient.find((m) => 'result' in m && typeof (m.result as { protocolVersion?: unknown }).protocolVersion === 'string');
       return init && 'result' in init ? (init.result as { protocolVersion: string }).protocolVersion : undefined;

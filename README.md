@@ -15,15 +15,15 @@ No fork, no `--require`, no module-level monkey patching: you pass the transport
 
 ## Status
 
-- Version 0.1.0. Targets `@modelcontextprotocol/*` 2.0.0, the first release line that speaks `2026-07-28`. The 1.x SDK is not supported. Node 20 or later.
-- Client-initiated requests only. `tools/call`, `tools/list` and every other request the client sends gets a span. Requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) are passed through: no span, no injection. Notifications and metrics are not instrumented yet (see Roadmap).
+- Version 0.2.0. Targets `@modelcontextprotocol/*` 2.0.0, the first release line that speaks `2026-07-28`. The 1.x SDK is not supported. Node 20 or later.
+- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications and metrics are not instrumented yet (see Roadmap).
 - The MCP semantic conventions are at status Development and may change. While they are, a minor version of this package may rename attributes; patch versions never change what is emitted. Attribute names live in one module of this package, checked by a test against `@opentelemetry/semantic-conventions` 1.43.0. Read [docs/END-OF-LIFE.md](https://github.com/AmirK-S/mcp-opentelemetry/blob/main/docs/END-OF-LIFE.md) before depending on this in production.
 
 Dependencies are pinned in `package-lock.json`; the tested combinations are:
 
 | mcp-opentelemetry | MCP SDK | `@opentelemetry/api` | Node |
 | --- | --- | --- | --- |
-| 0.1.x | `@modelcontextprotocol/{client,server,core}` 2.0.x | 1.9 or later | 20, 22, 24 (tested in CI) |
+| 0.1.x, 0.2.x | `@modelcontextprotocol/{client,server,core}` 2.0.x | 1.9 or later | 20, 22, 24 (tested in CI) |
 
 ## Install
 
@@ -114,10 +114,12 @@ Besides the five functions above, the package exports `isInstrumented(transport)
 
 ### Spans
 
-| Side | Kind | Name | Starts | Ends |
+| Direction | Kind | Name | Starts | Ends |
 | --- | --- | --- | --- | --- |
-| client | `CLIENT` | `{method} {target}` | when the request is handed to the transport | when the matching response arrives, when the write fails, or when the transport closes |
-| server | `SERVER` | `{method} {target}` | when the request arrives from the transport | when the response has been written, when the write fails, or when the transport closes |
+| request sent | `CLIENT` | `{method} {target}` | when the request is handed to the transport | when the matching response arrives, when the write fails, or when the transport closes |
+| request received | `SERVER` | `{method} {target}` | when the request arrives from the transport | when the response has been written, when the write fails, or when the transport closes |
+
+Both sides get both kinds: a server that calls `sampling/createMessage` from inside a tool gets a `CLIENT` span under its `SERVER` span, and the client that answers gets a `SERVER` span under that, in the same trace.
 
 `target` is the tool name for `tools/call` and the prompt name for `prompts/get`, and absent otherwise: `tools/list` is named `tools/list`, a tool call `tools/call get-weather`, a resource read `resources/read` (the uri is an attribute, and part of the name only with `resourceUriInSpanName`).
 
@@ -156,7 +158,6 @@ A complete `_meta` with the two required envelope keys, a 512 character `tracest
 
 ## Known limits
 
-- Not yet covered: requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) get no span and no `traceparent`; planned for 0.2.0.
 - HTTP requests rejected before the transport (missing `Mcp-Method` header, a 2025-era opening on a modern-only route, 405) never reach the instrumentation and produce no span. Put an HTTP instrumentation in front if you need them.
 - Notifications (`notifications/progress`, `notifications/cancelled`) are passed through unchanged for now.
 - Hosts that send no `traceparent` start the trace at the server. Measured on 2026-09-05: Claude Code 2.1.261 speaks `2025-11-25` and puts only `progressToken` and `claudecode/toolUseId` in `_meta`, so a server behind it produces root spans, one per tool call.
@@ -195,7 +196,7 @@ Measured on 2026-09-06 by reading the published code of each package, never its 
 
 | Package | Version (date) | Targets | Propagates via `_meta` | Spans | Convention attributes (required present/missing) | Notifications | Metrics | Content capture default | Last release |
 |---|---|---|---|---|---|---|---|---|---|
-| `mcp-opentelemetry` (this) | 0.1.0 | TS SDK 2.x, protocol `2026-07-28` | yes, client-initiated requests only | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | no | none | off (`captureArguments`, `captureResults`) | n/a |
+| `mcp-opentelemetry` (this) | 0.2.0 | TS SDK 2.x, protocol `2026-07-28` | yes, requests in both directions | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | no | none | off (`captureArguments`, `captureResults`) | n/a |
 | `mcp` (Python SDK, built in) | 2.1.1 (2026-08-25) | itself | yes, requests only (outbound); extracts on requests and notifications | CLIENT + SERVER; server name conforms, client name prefixed `MCP send` | 1/1 required, 5/6 conditional (`mcp.resource.uri` missing), 0 off-convention | inbound only | none | off | 2026-08-25 |
 | `@arizeai/openinference-instrumentation-mcp` | 0.2.30 (2026-09-04) | TS SDK 1.x | yes, requests only | none | no attributes | no (by design) | none | n/a | 2026-09-04 |
 | `openinference-instrumentation-mcp` (Python) | 2.0.9 (2026-09-04) | `mcp >= 1.24.0` | yes, requests only | none | no attributes | no | none | n/a | 2026-09-04 |
@@ -209,16 +210,15 @@ Measured on 2026-09-06 by reading the published code of each package, never its 
 | `@theharithsa/opentelemetry-instrumentation-mcp` | 1.0.4 (2025-09-26) | `@modelcontextprotocol/sdk >=0.0.0` | no | no kind, `mcp.tool:{name}` | 0/1 required, 0/6 conditional, 0 attributes | no | none | none | 2025-09-26 |
 | `@modelcontextprotocol/{core,client,server}` (TS SDK) | 2.0.0 (2026-07-27) | itself | constants only (`TRACEPARENT_META_KEY`, `TRACESTATE_META_KEY`, `BAGGAGE_META_KEY`) | none | n/a | n/a | none | n/a | 2026-07-27 |
 
-Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; it is also missing the whole server-initiated direction, every notification and every metric, which the table shows.
+Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; it is also missing every notification and every metric, which the table shows (the server-initiated direction was added in 0.2.0, after the measurement).
 
 The MCP TypeScript SDK itself exports the three key constants and a passthrough test since PR #2270, and nothing else: no span, no injection, no extraction. The tracking issue #2196 carries a scoping comment recommending that this live in a middleware package rather than in the SDK core, with `@opentelemetry/api` kept out of the published packages' hard dependencies. This package takes that shape from the outside.
 
 ## Roadmap
 
-1. Requests the server initiates: `sampling/createMessage`, `elicitation/create`, `roots/list`.
-2. `notifications/progress` and `notifications/cancelled`: inject from the active span, `PRODUCER` spans.
-3. The four duration metrics of the convention.
-4. A measured overhead figure per request.
+1. `notifications/progress` and `notifications/cancelled`: inject from the active span, `PRODUCER` spans.
+2. The four duration metrics of the convention.
+3. A measured overhead figure per request.
 
 ## Contributing, issues and security
 
