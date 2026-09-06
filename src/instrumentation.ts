@@ -39,6 +39,7 @@ import type {
   Connectable,
   JsonRpcErrorLike,
   JsonRpcMessageLike,
+  JsonRpcNotificationLike,
   JsonRpcParams,
   JsonRpcRequestLike,
   JsonRpcResultLike,
@@ -68,12 +69,16 @@ export interface McpInstrumentationOptions {
    * and can carry a path. The uri is always recorded as `mcp.resource.uri`.
    */
   resourceUriInSpanName?: boolean | undefined;
+  /** Propagate into and open spans for notifications. On by default. */
+  instrumentNotifications?: boolean | undefined;
 }
 
 export type Role = 'client' | 'server';
 
 /** Error class recorded when a transport closes while requests are in flight. */
 export const ERROR_TYPE_VALUE_CONNECTION_CLOSED = 'connection_closed';
+/** Error class recorded on a request span when the caller cancels the request. */
+export const ERROR_TYPE_VALUE_CANCELLED = 'cancelled';
 
 const INSTRUMENTED: unique symbol = Symbol.for('mcp-opentelemetry.instrumented');
 const CONNECT_PATCHED: unique symbol = Symbol.for('mcp-opentelemetry.connect-patched');
@@ -108,6 +113,10 @@ const metaGetter: TextMapGetter<Record<string, unknown>> = {
 
 function isRequest(message: JsonRpcMessageLike): message is JsonRpcRequestLike {
   return 'method' in message && 'id' in message && message.id !== null && message.id !== undefined;
+}
+
+function isNotification(message: JsonRpcMessageLike): message is JsonRpcNotificationLike {
+  return 'method' in message && !('id' in message && message.id !== null && message.id !== undefined);
 }
 
 function isResponse(message: JsonRpcMessageLike): message is JsonRpcResultLike | JsonRpcErrorLike {
@@ -195,6 +204,14 @@ class TransportState {
       default:
         break;
     }
+    return attributes;
+  }
+
+  notificationAttributes(notification: JsonRpcNotificationLike): Attributes {
+    const attributes: Attributes = { ...this.staticAttributes, [ATTR_MCP_METHOD_NAME]: notification.method };
+    const envelopeVersion = notification.params?._meta?.[PROTOCOL_VERSION_META_KEY];
+    const version = typeof envelopeVersion === 'string' ? envelopeVersion : this.negotiatedProtocolVersion;
+    if (version !== undefined) attributes[ATTR_MCP_PROTOCOL_VERSION] = version;
     return attributes;
   }
 
@@ -313,9 +330,9 @@ function interceptCallback<K extends 'onmessage' | 'onclose'>(
 }
 
 /** Give the request a `_meta` of its own, never mutating an object the caller may still hold. */
-function ownMeta(request: JsonRpcRequestLike): Record<string, unknown> {
-  const meta: Record<string, unknown> = { ...request.params?._meta };
-  request.params = { ...request.params, _meta: meta };
+function ownMeta(message: { params?: JsonRpcParams | undefined }): Record<string, unknown> {
+  const meta: Record<string, unknown> = { ...message.params?._meta };
+  message.params = { ...message.params, _meta: meta };
   return meta;
 }
 
@@ -335,11 +352,39 @@ function countBaggagePairs(serialized: unknown): number {
  */
 function instrumentAsPeer(transport: TransportLike, state: TransportState): () => void {
   const send = transport.send.bind(transport);
+  const notifications = state.options.instrumentNotifications !== false;
   transport.send = (message: JsonRpcMessageLike, options?: unknown): Promise<void> => {
     if (isRequest(message)) return sendRequest(message, options);
     if (isResponse(message)) return sendResponse(message, options);
+    if (notifications && isNotification(message)) return sendNotification(message, options);
     return send(message, options);
   };
+
+  function sendNotification(message: JsonRpcNotificationLike, options?: unknown): Promise<void> {
+    let parent = context.active();
+    if (message.method === 'notifications/cancelled') {
+      // A cancellation is sent from the abort handler, outside the context of
+      // the call: parent it to the span of the request it cancels.
+      const requestId = message.params?.['requestId'];
+      const cancelled = typeof requestId === 'string' || typeof requestId === 'number' ? state.outbound.get(pendingKey(requestId)) : undefined;
+      if (cancelled !== undefined) {
+        parent = trace.setSpan(parent, cancelled.span);
+        // The request will get no usable answer: close its span now.
+        state.outbound.delete(pendingKey(requestId as RequestId));
+        state.fail(cancelled, ERROR_TYPE_VALUE_CANCELLED);
+      }
+    }
+    const span = state.tracer.startSpan(message.method, { kind: SpanKind.CLIENT, attributes: state.notificationAttributes(message) }, parent);
+    const ctx = trace.setSpan(parent, span);
+    state.propagator.inject(ctx, ownMeta(message), metaSetter);
+    return context.with(ctx, () => send(message, options)).then(
+      () => span.end(),
+      (error: unknown) => {
+        state.fail({ span, method: message.method }, error instanceof Error ? error.name : 'send_failed', error);
+        throw error;
+      },
+    );
+  }
 
   function sendRequest(message: JsonRpcRequestLike, options?: unknown): Promise<void> {
     const parent = context.active();
@@ -382,30 +427,42 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
   return interceptCallback(transport, 'onmessage', (fn) => (message: JsonRpcMessageLike, extra?: unknown) => {
     if (isRequest(message)) return receiveRequest(message, extra, fn);
     if (isResponse(message)) state.settle(message);
+    else if (notifications && isNotification(message)) return receiveNotification(message, extra, fn);
     return fn(message, extra);
   });
 
-  function receiveRequest(message: JsonRpcRequestLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
+  /** Parent per the convention: the carried context, with the ambient context as a link; else the ambient context. */
+  function inboundParent(message: { params?: JsonRpcParams | undefined }): { parent: Context; links: Link[] } {
     const ambient = context.active();
     const meta = message.params?._meta;
     const extracted = meta !== undefined && meta !== null && typeof meta === 'object' ? state.propagator.extract(ROOT_CONTEXT, meta, metaGetter) : ROOT_CONTEXT;
-
-    // Parenting rule of the convention: the context carried by `_meta` is the
-    // parent; an ambient context (an incoming HTTP request) becomes a link.
-    // Without a valid carried context, the ambient context is the parent.
     const remote = trace.getSpanContext(extracted);
     const ambientSpan = trace.getSpanContext(ambient);
-    let parent: Context;
     const links: Link[] = [];
     if (remote !== undefined && trace.isSpanContextValid(remote)) {
-      parent = extracted;
       if (ambientSpan !== undefined && trace.isSpanContextValid(ambientSpan)) links.push({ context: ambientSpan });
-    } else {
-      parent = ambient;
-      const baggage = propagation.getBaggage(extracted);
-      if (baggage !== undefined) parent = propagation.setBaggage(parent, baggage);
+      return { parent: extracted, links };
     }
+    const baggage = propagation.getBaggage(extracted);
+    return { parent: baggage !== undefined ? propagation.setBaggage(ambient, baggage) : ambient, links };
+  }
 
+  function receiveNotification(message: JsonRpcNotificationLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
+    const { parent, links } = inboundParent(message);
+    const span = state.tracer.startSpan(message.method, { kind: SpanKind.SERVER, attributes: state.notificationAttributes(message), links }, parent);
+    const ctx = trace.setSpan(parent, span);
+    state.propagator.inject(ctx, ownMeta(message), metaSetter);
+    try {
+      return context.with(ctx, () => fn(message, extra));
+    } finally {
+      // The SDK hands notifications to their handler in a later microtask;
+      // the span covers the dispatch, not the handler.
+      span.end();
+    }
+  }
+
+  function receiveRequest(message: JsonRpcRequestLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
+    const { parent, links } = inboundParent(message);
     const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.SERVER, attributes: state.startAttributes(message), links }, parent);
     state.inbound.set(pendingKey(message.id), { span, method: message.method });
     const ctx = trace.setSpan(parent, span);

@@ -159,10 +159,15 @@ export async function connectedPair(options: PairOptions = {}, harness?: OtelHar
   );
   server.registerTool(
     'slow',
-    { description: 'Takes a while', inputSchema: {} },
+    { description: 'Takes a while, reports progress when asked', inputSchema: {} },
     async (_args, ctx) => {
       observe(ctx as never);
-      await new Promise((r) => setTimeout(r, options.slowMs ?? 200));
+      const token = ctx.mcpReq._meta?.progressToken;
+      const steps = 3;
+      for (let i = 1; i <= steps; i++) {
+        await new Promise((r) => setTimeout(r, (options.slowMs ?? 200) / steps));
+        if (token !== undefined) await ctx.mcpReq.notify({ method: 'notifications/progress', params: { progressToken: token, progress: i, total: steps } });
+      }
       return { content: [{ type: 'text', text: 'done' }] };
     },
   );

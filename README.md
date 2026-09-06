@@ -16,7 +16,7 @@ No fork, no `--require`, no module-level monkey patching: you pass the transport
 ## Status
 
 - Version 0.2.0. Targets `@modelcontextprotocol/*` 2.0.0, the first release line that speaks `2026-07-28`. The 1.x SDK is not supported. Node 20 or later.
-- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications and metrics are not instrumented yet (see Roadmap).
+- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications too: `notifications/progress` emitted from a tool carries the tool's context, `notifications/cancelled` is parented to the request it cancels. Metrics are not implemented yet (see Roadmap).
 - The MCP semantic conventions are at status Development and may change. While they are, a minor version of this package may rename attributes; patch versions never change what is emitted. Attribute names live in one module of this package, checked by a test against `@opentelemetry/semantic-conventions` 1.43.0. Read [docs/END-OF-LIFE.md](https://github.com/AmirK-S/mcp-opentelemetry/blob/main/docs/END-OF-LIFE.md) before depending on this in production.
 
 Dependencies are pinned in `package-lock.json`; the tested combinations are:
@@ -101,6 +101,7 @@ Every function takes an optional second argument:
 | `captureArguments` | `false` | record `gen_ai.tool.call.arguments` (tool arguments may be sensitive) |
 | `captureResults` | `false` | record `gen_ai.tool.call.result` (tool results may be sensitive) |
 | `resourceUriInSpanName` | `false` | put the uri in the span name of `resources/read`; the convention marks this opt-in because of cardinality and because a uri can carry a path |
+| `instrumentNotifications` | `true` | inject into and open spans for notifications |
 | `networkTransport` | detected from the transport class | value of `network.transport` (`pipe` for stdio, `tcp` for HTTP) |
 | `serverAddress`, `serverPort` | unset | values of `server.address` and `server.port` |
 
@@ -121,6 +122,8 @@ Besides the five functions above, the package exports `isInstrumented(transport)
 
 Both sides get both kinds: a server that calls `sampling/createMessage` from inside a tool gets a `CLIENT` span under its `SERVER` span, and the client that answers gets a `SERVER` span under that, in the same trace.
 
+Notifications follow the same rule with two differences: the `CLIENT` span ends as soon as the notification is written, and the `SERVER` span covers the dispatch to the SDK, not the handler, which the SDK runs later. A `notifications/progress` sent from inside a tool sits under the tool's `SERVER` span. A `notifications/cancelled` is sent by the SDK from the abort handler, outside any request context, so it is parented to the span of the request it cancels; that request span is closed at that moment with `error.type` `cancelled`. Every notification, `notifications/initialized` included, gets a `_meta` with the context: the schema makes `_meta` optional on notifications and the SDK passes it through.
+
 `target` is the tool name for `tools/call` and the prompt name for `prompts/get`, and absent otherwise: `tools/list` is named `tools/list`, a tool call `tools/call get-weather`, a resource read `resources/read` (the uri is an attribute, and part of the name only with `resourceUriInSpanName`).
 
 ### Attributes
@@ -135,7 +138,7 @@ Both sides get both kinds: a server that calls `sampling/createMessage` from ins
 | `gen_ai.operation.name` | `tools/call` | `execute_tool` |
 | `gen_ai.prompt.name` | `prompts/get` | the prompt name |
 | `mcp.resource.uri` | `resources/read` | the uri |
-| `error.type` | on failure | the JSON-RPC error code as a string; `tool_error` when the result carries `isError`; `connection_closed` when the transport closed first; the error name when the transport rejects the write, or `send_failed` when the rejected value is not an `Error` |
+| `error.type` | on failure | the JSON-RPC error code as a string; `tool_error` when the result carries `isError`; `cancelled` when the caller cancels the request; `connection_closed` when the transport closed first; the error name when the transport rejects the write, or `send_failed` when the rejected value is not an `Error` |
 | `rpc.response.status_code` | JSON-RPC error | the error code as a string |
 | `network.transport` | when known | `pipe`, `tcp` |
 | `server.address`, `server.port` | when given | as given |
@@ -159,9 +162,9 @@ A complete `_meta` with the two required envelope keys, a 512 character `tracest
 ## Known limits
 
 - HTTP requests rejected before the transport (missing `Mcp-Method` header, a 2025-era opening on a modern-only route, 405) never reach the instrumentation and produce no span. Put an HTTP instrumentation in front if you need them.
-- Notifications (`notifications/progress`, `notifications/cancelled`) are passed through unchanged for now.
 - Hosts that send no `traceparent` start the trace at the server. Measured on 2026-09-05: Claude Code 2.1.261 speaks `2025-11-25` and puts only `progressToken` and `claudecode/toolUseId` in `_meta`, so a server behind it produces root spans, one per tool call.
 - No metrics yet. The four duration metrics of the convention are the next step.
+- The `SERVER` span of a notification does not cover the handler: the SDK hands notifications to their handler in a later microtask, out of reach of the transport.
 - ESM only. A CommonJS build can be added if someone needs it; the SDK 2.x ships both, so the constraint comes from this package, not from the SDK.
 - Instrument a transport before `connect()`. Applied later, the package wraps the callbacks already installed, but the messages that went through before are not seen.
 
@@ -169,12 +172,12 @@ A complete `_meta` with the two required envelope keys, a 512 character `tracest
 
 Everything below runs with `npm test`, offline, transport and exporter in memory:
 
-- one test per protocol message of the scope: request, result, JSON-RPC error, `tools/list`, `resources/read`, with the exact attributes and the parent relations checked span by span;
+- one test per protocol message: request, result, JSON-RPC error, `tools/list`, `resources/read`, `sampling/createMessage` and `elicitation/create` initiated by the server, `notifications/progress`, `notifications/cancelled`, with the exact attributes and the parent relations checked span by span;
 - twelve malformed `traceparent` values (version `ff`, all-zero ids, wrong lengths, non-strings) with and without an ambient context, plus `tracestate` above 32 entries and malformed `baggage`: the call succeeds, the span is never orphaned;
 - idempotence, and coexistence with a propagation-only wrapper in both orders on both sides;
 - the internal attribute names and `_meta` keys against the published constants.
 
-Four manual mutations, run once on 2026-09-05 against the suite of 79 tests: disabling extraction makes 16 tests fail, breaking span naming 55, removing injection 8, dropping the context activation around the dispatch 4.
+Four manual mutations, run once on 2026-09-05 against the 79 tests of 0.1.0: disabling extraction makes 16 tests fail, breaking span naming 55, removing injection 8, dropping the context activation around the dispatch 4.
 
 `npm run test:integration` adds two real processes over stdio, then the same through Jaeger with the trace read back from its API. The trace of the last run is in `test/integration/results/jaeger-trace.json`.
 
@@ -196,7 +199,7 @@ Measured on 2026-09-06 by reading the published code of each package, never its 
 
 | Package | Version (date) | Targets | Propagates via `_meta` | Spans | Convention attributes (required present/missing) | Notifications | Metrics | Content capture default | Last release |
 |---|---|---|---|---|---|---|---|---|---|
-| `mcp-opentelemetry` (this) | 0.2.0 | TS SDK 2.x, protocol `2026-07-28` | yes, requests in both directions | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | no | none | off (`captureArguments`, `captureResults`) | n/a |
+| `mcp-opentelemetry` (this) | 0.2.0 | TS SDK 2.x, protocol `2026-07-28` | yes, requests in both directions and notifications | CLIENT + SERVER, `{method} {target}` | 1/1 required, 6/6 conditional, 0 off-convention | yes, both directions | none | off (`captureArguments`, `captureResults`) | n/a |
 | `mcp` (Python SDK, built in) | 2.1.1 (2026-08-25) | itself | yes, requests only (outbound); extracts on requests and notifications | CLIENT + SERVER; server name conforms, client name prefixed `MCP send` | 1/1 required, 5/6 conditional (`mcp.resource.uri` missing), 0 off-convention | inbound only | none | off | 2026-08-25 |
 | `@arizeai/openinference-instrumentation-mcp` | 0.2.30 (2026-09-04) | TS SDK 1.x | yes, requests only | none | no attributes | no (by design) | none | n/a | 2026-09-04 |
 | `openinference-instrumentation-mcp` (Python) | 2.0.9 (2026-09-04) | `mcp >= 1.24.0` | yes, requests only | none | no attributes | no | none | n/a | 2026-09-04 |
@@ -210,15 +213,14 @@ Measured on 2026-09-06 by reading the published code of each package, never its 
 | `@theharithsa/opentelemetry-instrumentation-mcp` | 1.0.4 (2025-09-26) | `@modelcontextprotocol/sdk >=0.0.0` | no | no kind, `mcp.tool:{name}` | 0/1 required, 0/6 conditional, 0 attributes | no | none | none | 2025-09-26 |
 | `@modelcontextprotocol/{core,client,server}` (TS SDK) | 2.0.0 (2026-07-27) | itself | constants only (`TRACEPARENT_META_KEY`, `TRACESTATE_META_KEY`, `BAGGAGE_META_KEY`) | none | n/a | n/a | none | n/a | 2026-07-27 |
 
-Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; it is also missing every notification and every metric, which the table shows (the server-initiated direction was added in 0.2.0, after the measurement).
+Two packages propagate the context and set the required attribute: the Python SDK and this one. This one is the only measured package that applies the complete parenting rule (remote parent plus a link to the ambient context) and whose attribute keys are all in the convention; it is also missing every metric, which the table shows (the server-initiated direction and the notifications were added in 0.2.0, after the measurement; the row reflects 0.2.0).
 
 The MCP TypeScript SDK itself exports the three key constants and a passthrough test since PR #2270, and nothing else: no span, no injection, no extraction. The tracking issue #2196 carries a scoping comment recommending that this live in a middleware package rather than in the SDK core, with `@opentelemetry/api` kept out of the published packages' hard dependencies. This package takes that shape from the outside.
 
 ## Roadmap
 
-1. `notifications/progress` and `notifications/cancelled`: inject from the active span, `PRODUCER` spans.
-2. The four duration metrics of the convention.
-3. A measured overhead figure per request.
+1. The four duration metrics of the convention.
+2. A measured overhead figure per request.
 
 ## Contributing, issues and security
 

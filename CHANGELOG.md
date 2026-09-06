@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Requests initiated by the server (`sampling/createMessage`, `elicitation/create`, `roots/list`, `ping`): the server side opens a `CLIENT` span under the active server span and injects `params._meta`; the client side opens a `SERVER` span parented to it and runs the handler inside it. Both transports now handle both directions, so `instrumentClientTransport` and `instrumentServerTransport` differ only in the role recorded on the object.
+- Notifications: the context is injected into `params._meta` of every outgoing notification and extracted from every incoming one; a `CLIENT` span on the emitter and a `SERVER` span on the receiver, named after the method. `notifications/cancelled` is parented to the span of the request it cancels, which is closed with `error.type` `cancelled`. Option `instrumentNotifications` to turn this off.
 
 ## [0.1.0] - 2026-09-06
 
