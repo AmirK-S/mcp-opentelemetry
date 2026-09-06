@@ -9,13 +9,17 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "src",
+    "docs",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md"
   ],
   "engines": {
     "node": ">=20"
@@ -35,9 +39,12 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
+    "modelcontextprotocol",
     "opentelemetry",
     "otel",
+    "instrumentation",
     "tracing",
+    "distributed-tracing",
     "traceparent",
     "w3c-trace-context",
     "observability"
@@ -53,7 +60,6 @@
   },
   "homepage": "https://github.com/AmirK-S/mcp-opentelemetry#readme",
   "peerDependencies": {
-    "@modelcontextprotocol/core": "^2.0.0",
     "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
@@ -74,5 +80,6 @@
     "typescript": "^5.9.3",
     "vitest": "^3.2.7",
     "zod": "^4.5.4"
-  }
+  },
+  "sideEffects": false
 }

@@ -100,7 +100,7 @@ describe('tools/call request', () => {
       expect(span.attributes[ATTR_GEN_AI_TOOL_NAME]).toBe('echo');
       expect(span.attributes[ATTR_GEN_AI_OPERATION_NAME]).toBe(GEN_AI_OPERATION_NAME_VALUE_EXECUTE_TOOL);
       expect(span.attributes[ATTR_JSONRPC_REQUEST_ID]).toBe(String((request as { id: unknown }).id));
-      expect(span.attributes[ATTR_JSONRPC_PROTOCOL_VERSION]).toBe('2.0');
+      expect(span.attributes[ATTR_JSONRPC_PROTOCOL_VERSION]).toBeUndefined();
       expect(span.attributes[ATTR_MCP_PROTOCOL_VERSION]).toBe(negotiated);
       expect(span.attributes[ATTR_ERROR_TYPE]).toBeUndefined();
       expect(span.attributes[ATTR_RPC_RESPONSE_STATUS_CODE]).toBeUndefined();

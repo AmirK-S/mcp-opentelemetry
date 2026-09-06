@@ -62,6 +62,12 @@ export interface McpInstrumentationOptions {
   serverAddress?: string | undefined;
   /** Value of `server.port`, for HTTP transports. */
   serverPort?: number | undefined;
+  /**
+   * Put the resource uri in the span name of `resources/read`. Off by default:
+   * the convention marks it opt-in because a uri raises span name cardinality
+   * and can carry a path. The uri is always recorded as `mcp.resource.uri`.
+   */
+  resourceUriInSpanName?: boolean | undefined;
 }
 
 export type Role = 'client' | 'server';
@@ -124,7 +130,8 @@ function targetOf(method: string, params: JsonRpcParams | undefined): string | u
   }
 }
 
-function spanNameOf(method: string, params: JsonRpcParams | undefined): string {
+function spanNameOf(method: string, params: JsonRpcParams | undefined, resourceUriInSpanName: boolean): string {
+  if (method === 'resources/read' && !resourceUriInSpanName) return method;
   const target = targetOf(method, params);
   return target === undefined ? method : `${method} ${target}`;
 }
@@ -161,8 +168,9 @@ class TransportState {
       ...this.staticAttributes,
       [ATTR_MCP_METHOD_NAME]: request.method,
       [ATTR_JSONRPC_REQUEST_ID]: String(request.id),
-      [ATTR_JSONRPC_PROTOCOL_VERSION]: '2.0',
     };
+    // The convention wants jsonrpc.protocol.version only when it is not 2.0.
+    if (request.jsonrpc !== '2.0') attributes[ATTR_JSONRPC_PROTOCOL_VERSION] = String(request.jsonrpc);
     const params = request.params;
     const envelopeVersion = params?._meta?.[PROTOCOL_VERSION_META_KEY];
     const version = typeof envelopeVersion === 'string' ? envelopeVersion : this.negotiatedProtocolVersion;
@@ -319,7 +327,7 @@ function instrumentAsClient(transport: TransportLike, state: TransportState): ()
     if (!isRequest(message)) return send(message, options);
 
     const parent = context.active();
-    const span = state.tracer.startSpan(spanNameOf(message.method, message.params), { kind: SpanKind.CLIENT, attributes: state.startAttributes(message) }, parent);
+    const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.CLIENT, attributes: state.startAttributes(message) }, parent);
     const ctx = trace.setSpan(parent, span);
     const meta = ownMeta(message);
     state.propagator.inject(ctx, meta, metaSetter);
@@ -371,7 +379,7 @@ function instrumentAsServer(transport: TransportLike, state: TransportState): ()
       if (baggage !== undefined) parent = propagation.setBaggage(parent, baggage);
     }
 
-    const span = state.tracer.startSpan(spanNameOf(message.method, message.params), { kind: SpanKind.SERVER, attributes: state.startAttributes(message), links }, parent);
+    const span = state.tracer.startSpan(spanNameOf(message.method, message.params, state.options.resourceUriInSpanName === true), { kind: SpanKind.SERVER, attributes: state.startAttributes(message), links }, parent);
     state.pending.set(pendingKey(message.id), { span, method: message.method });
     const ctx = trace.setSpan(parent, span);
 

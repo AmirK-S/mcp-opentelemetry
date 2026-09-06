@@ -1,31 +1,31 @@
-# examples/http : ce qui change par rapport a l everything-server de reference
+# examples/http: what changes from the reference everything-server
 
-`examples/http/server.ts` reprend le serveur de reference du depot
-`modelcontextprotocol/conformance`
-(`examples/servers/typescript/everything-server.ts`). Celui-ci cible
-`@modelcontextprotocol/sdk@^1.29.0` avec Express ; ce depot utilise le SDK v2
-(`@modelcontextprotocol/{core,client,server,node}@2.0.0`) et `node:http`. Les
-adaptations sont les suivantes.
+`examples/http/server.ts` is derived from the reference server of the
+`modelcontextprotocol/conformance` repository
+(`examples/servers/typescript/everything-server.ts`). The reference targets
+`@modelcontextprotocol/sdk@^1.29.0` with Express; this repository uses the SDK v2
+(`@modelcontextprotocol/{core,client,server,node}@2.0.0`) and `node:http`. The
+adaptations are the following.
 
-| Reference v1 | Ici, SDK 2.0.0 | Pourquoi |
+| Reference, SDK 1.x | Here, SDK 2.0.0 | Why |
 | --- | --- | --- |
-| `createMcpExpressApp` + `StreamableHTTPServerTransport` par session, plus un pont `InMemoryTransport` pour servir le sans-etat | `createMcpHandler(factory)` + `toNodeHandler` | Le SDK v2 sert nativement la revision 2026-07-28 sans etat : une instance par requete, construite par la fabrique. Le pont en memoire de la reference n existe plus. |
-| `cors` + Express | Gardes `localhostHostValidation()` / `localhostOriginValidation()` de `@modelcontextprotocol/node` | `node:http` n a pas de chaine de middlewares : chaque garde repond elle-meme et renvoie `false` quand il ne faut plus traiter la requete. |
-| Enrobage de `setRequestHandler` pour ajouter `ttlMs` / `cacheScope` aux resultats de liste | Option `ServerOptions.cacheHints` et `registerResource(..., { cacheHint })` | SEP-2549 est une option declarative dans le SDK v2. |
-| HMAC maison (`signMrtState` / `verifyMrtState`) pour le `requestState` | `createRequestStateCodec` + `ServerOptions.requestState.verify` | Le SDK v2 fournit le codec HMAC et le crochet de verification ; un etat trafique produit le `-32602` fige attendu par `input-required-result-tampered-state`. |
-| Resultats `InputRequiredResult` ecrits a la main | `inputRequired(...)`, `inputRequired.elicit/createMessage/listRoots`, `acceptedContent`, `inputResponse` | Le multi-aller-retour (SEP-2322) est natif dans le SDK v2. |
-| `sendNotification({ method: 'notifications/progress', ... })` depuis `extra` | `ctx.mcpReq.notify(...)` et `ctx.mcpReq.log(...)` | Le contexte de handler a change de forme entre v1 et v2. |
-| `test_missing_capability` leve une erreur | `test_missing_capability` renvoie `inputRequired({ inputRequests: { ...createMessage } })` | Dans le SDK v2 une erreur levee dans un callback d outil devient un resultat `isError`, jamais une erreur JSON-RPC. Le `-32021` ne peut donc venir que du controle de capacites du seam `input_required`, qui compare chaque requete embarquee aux capacites declarees dans l enveloppe `_meta` de la requete. |
-| `completions: {}` declare dans les capacites | En plus, un argument `completable(...)` sur `test_prompt_with_arguments` | `McpServer` v2 n installe le handler `completion/complete` que si au moins un argument enregistre est completable. Declarer la capacite seule laisse la methode repondre `-32601`. |
-| Prompts enregistres sans `argsSchema` | `test_input_required_result_prompt` garde le callback `(ctx)` du runtime et passe la surcharge par un `as never` | Le generique `Args` de `registerPrompt` n a pas de defaut `undefined` : sans `argsSchema` le typage annonce `(args, ctx)` alors que le runtime appelle `(ctx)`. Declarer un `z.object({})` refuserait un `prompts/get` sans `arguments`, ce que le scenario envoie. |
+| `createMcpExpressApp` plus one `StreamableHTTPServerTransport` per session, plus an `InMemoryTransport` bridge to serve stateless requests | `createMcpHandler(factory)` plus `toNodeHandler` | The SDK v2 serves revision 2026-07-28 statelessly by design: one instance per request, built by the factory. The in-memory bridge of the reference no longer exists. |
+| `cors` plus Express | The `localhostHostValidation()` and `localhostOriginValidation()` guards of `@modelcontextprotocol/node` | `node:http` has no middleware chain: each guard answers by itself and returns `false` when the request must not be processed further. |
+| A wrapper around `setRequestHandler` adding `ttlMs` and `cacheScope` to list results | The `ServerOptions.cacheHints` option and `registerResource(..., { cacheHint })` | SEP-2549 is a declarative option in the SDK v2. |
+| A hand-written HMAC (`signMrtState`, `verifyMrtState`) for `requestState` | `createRequestStateCodec` plus `ServerOptions.requestState.verify` | The SDK v2 ships the HMAC codec and the verification hook; a tampered state yields the frozen `-32602` expected by `input-required-result-tampered-state`. |
+| `InputRequiredResult` objects written by hand | `inputRequired(...)`, `inputRequired.elicit/createMessage/listRoots`, `acceptedContent`, `inputResponse` | Multi round trips (SEP-2322) are native in the SDK v2. |
+| `sendNotification({ method: 'notifications/progress', ... })` from `extra` | `ctx.mcpReq.notify(...)` and `ctx.mcpReq.log(...)` | The handler context changed shape between v1 and v2. |
+| `test_missing_capability` throws | `test_missing_capability` returns `inputRequired({ inputRequests: { ...createMessage } })` | In the SDK v2 an error thrown in a tool callback becomes an `isError` result, never a JSON-RPC error. The `-32021` can only come from the capability check of the `input_required` seam, which compares each embedded request with the capabilities declared in the `_meta` envelope of the request. |
+| `completions: {}` declared in the capabilities | In addition, a `completable(...)` argument on `test_prompt_with_arguments` | `McpServer` v2 installs the `completion/complete` handler only when at least one registered argument is completable. Declaring the capability alone leaves the method answering `-32601`. |
+| Prompts registered without `argsSchema` | `test_input_required_result_prompt` keeps the runtime `(ctx)` callback and bypasses the overload with `as never` | The `Args` generic of `registerPrompt` has no `undefined` default: without `argsSchema` the typing announces `(args, ctx)` while the runtime calls `(ctx)`. Declaring `z.object({})` would reject a `prompts/get` without `arguments`, which the scenario sends. |
 
-Outils, ressources et prompts non repris, tous hors du jeu note pour
-`2026-07-28` :
+Tools, resources and prompts not carried over, all outside the scored set for
+`2026-07-28`:
 
-- `json_schema_2020_12_tool` (scenario `json-schema-2020-12`, marque `pending`).
-- Les outils annotes `x-mcp-header` de SEP-2243 (scenario
-  `http-custom-header-server-validation`, marque `pending`).
-- Toute la famille `tasks/*` de SEP-2663 (`greet`, `slow_compute`,
-  `failing_job`, `confirm_delete`, ...), marquee `extension`.
-- `test_reconnection` (SEP-1699), `test_sampling`, `test_elicitation` : hors du
-  jeu note 2026-07-28, ou remplaces par le multi-aller-retour.
+- `json_schema_2020_12_tool` (scenario `json-schema-2020-12`, marked `pending`).
+- The `x-mcp-header` annotated tools of SEP-2243 (scenario
+  `http-custom-header-server-validation`, marked `pending`).
+- The whole `tasks/*` family of SEP-2663 (`greet`, `slow_compute`,
+  `failing_job`, `confirm_delete`, ...), marked `extension`.
+- `test_reconnection` (SEP-1699), `test_sampling`, `test_elicitation`: outside the
+  scored 2026-07-28 set, or superseded by the multi round trip flow.

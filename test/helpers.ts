@@ -158,6 +158,10 @@ export async function connectedPair(options: PairOptions = {}, harness?: OtelHar
     },
   );
 
+  server.registerResource('static', 'test://static/readme', { description: 'A static resource' }, async (uri) => ({
+    contents: [{ uri: uri.href, text: 'hello' }],
+  }));
+
   const [rawClientTransport, rawServerTransport] = InMemoryTransport.createLinkedPair();
   const wire: Wire = { clientToServer: [], serverToClient: [] };
   isolate(rawClientTransport, wire.clientToServer, options.serverAmbient);

@@ -16,10 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Server side rewrite of the inbound `traceparent` to the server span, so downstream extractions parent correctly.
 - Pending spans closed with `error.type=connection_closed` when the transport closes.
 - Offline test suite, two-process stdio integration test, Jaeger end-to-end test, conformance comparison script.
-- Stdio example with a Jaeger demo.
+- Stdio example with a Jaeger demo; HTTP example server used by the conformance comparison.
+- `resourceUriInSpanName` option, off by default as the convention asks.
+- `SECURITY.md`, `CONTRIBUTING.md`, end-of-life note.
 
 ### Known limits
 
+- Client-initiated requests only: requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) get no span and no injection.
 - Notifications are passed through without injection. No metrics. ESM only.
 - HTTP requests rejected before the transport produce no span.
 

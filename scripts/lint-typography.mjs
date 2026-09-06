@@ -3,8 +3,8 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const roots = ['README.md', 'CHANGELOG.md', 'src', 'test', 'examples', 'docs'];
-const banned = /[–—]/;
+const roots = ['README.md', 'CHANGELOG.md', 'SECURITY.md', 'CONTRIBUTING.md', 'LICENSE', 'package.json', 'src', 'test', 'examples', 'docs', 'scripts', '.github'];
+const banned = /[\u2013\u2014]/; // en dash, em dash
 const offenders = [];
 
 function walk(path) {
@@ -14,7 +14,7 @@ function walk(path) {
     for (const entry of readdirSync(path)) walk(join(path, entry));
     return;
   }
-  if (!/\.(md|ts|mts|js|mjs|json|yml|yaml)$/.test(path)) return;
+  if (!/\.(md|ts|mts|js|mjs|json|yml|yaml|sh)$/.test(path) && !/LICENSE$/.test(path)) return;
   const lines = readFileSync(path, 'utf8').split('\n');
   lines.forEach((line, i) => { if (banned.test(line)) offenders.push(`${path}:${i + 1}`); });
 }

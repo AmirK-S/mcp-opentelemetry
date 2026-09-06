@@ -15,6 +15,7 @@ describe('semantic convention strings', () => {
     ['ATTR_MCP_RESOURCE_URI', 'mcp.resource.uri'],
     ['ATTR_GEN_AI_TOOL_NAME', 'gen_ai.tool.name'],
     ['ATTR_GEN_AI_OPERATION_NAME', 'gen_ai.operation.name'],
+    ['ATTR_GEN_AI_PROMPT_NAME', 'gen_ai.prompt.name'],
     ['ATTR_GEN_AI_TOOL_CALL_ARGUMENTS', 'gen_ai.tool.call.arguments'],
     ['ATTR_GEN_AI_TOOL_CALL_RESULT', 'gen_ai.tool.call.result'],
     ['ATTR_JSONRPC_REQUEST_ID', 'jsonrpc.request.id'],

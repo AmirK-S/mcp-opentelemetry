@@ -1,6 +1,8 @@
 # What breaks next, and what to do
 
-Written on 05/09/2026 for version 0.1.0. This package sits between two moving targets: the MCP TypeScript SDK v2, in its first release line, and the OpenTelemetry semantic conventions for MCP, at status Development. Four things can break it. Each has a signal to watch and a response.
+Versioning rule: while the MCP semantic conventions are at status Development, a minor version of this package may rename or drop attributes and change span names; the CHANGELOG lists every such change. Patch versions never change what is emitted.
+
+Written on 2026-09-05 for version 0.1.0. This package sits between two moving targets: the MCP TypeScript SDK v2, in its first release line, and the OpenTelemetry semantic conventions for MCP, at status Development. Four things can break it. Each has a signal to watch and a response.
 
 ## 1. The convention renames or drops attributes
 
