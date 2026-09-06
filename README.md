@@ -154,7 +154,7 @@ A complete `_meta` with the two required envelope keys, a 512 character `tracest
 
 ## Known limits
 
-- Requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) are not instrumented: no span, no `traceparent`.
+- Not yet covered: requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) get no span and no `traceparent`; planned for 0.2.0.
 - HTTP requests rejected before the transport (missing `Mcp-Method` header, a 2025-era opening on a modern-only route, 405) never reach the instrumentation and produce no span. Put an HTTP instrumentation in front if you need them.
 - Notifications (`notifications/progress`, `notifications/cancelled`) are passed through unchanged for now.
 - Hosts that send no `traceparent` start the trace at the server. Measured on 2026-09-05: Claude Code 2.1.261 speaks `2025-11-25` and puts only `progressToken` and `claudecode/toolUseId` in `_meta`, so a server behind it produces root spans, one per tool call.
@@ -218,9 +218,9 @@ The MCP TypeScript SDK itself exports the three key constants and a passthrough 
 3. The four duration metrics of the convention.
 4. A measured overhead figure per request.
 
-## Contributing and security
+## Contributing, issues and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Issues get an answer within seven days; that answer is not a commitment to ship a feature. Versions are pinned in `package-lock.json`, and the tested combinations are in the table under Status.
 
 ## References
 

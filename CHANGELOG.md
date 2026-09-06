@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-06
+
 ### Added
 
 - `instrumentClientTransport`, `instrumentServerTransport`, `instrumentClient`, `instrumentServer`, `isInstrumented`.
@@ -22,7 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known limits
 
-- Client-initiated requests only: requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) get no span and no injection.
+- Not yet covered: requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`) get no span and no `traceparent`; planned for 0.2.0.
 - Notifications are passed through without injection. No metrics. ESM only.
 - HTTP requests rejected before the transport produce no span.
 
+[Unreleased]: https://github.com/AmirK-S/mcp-opentelemetry/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AmirK-S/mcp-opentelemetry/releases/tag/v0.1.0
