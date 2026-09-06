@@ -6,8 +6,8 @@ OpenTelemetry instrumentation for the MCP TypeScript SDK v2 (`@modelcontextproto
 
 It does two things the SDK leaves to you:
 
-1. **Propagation.** The W3C Trace Context of the caller travels in `params._meta` under the keys `traceparent`, `tracestate` and `baggage`, exactly as the specification reserves them (SEP-414). Injected on the client, extracted on the server.
-2. **Spans.** One `CLIENT` span per request on the client, one `SERVER` span per request on the server, named and attributed after the [OpenTelemetry semantic conventions for MCP](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/mcp.md). The server span is active while your tool runs, so the spans your tool creates hang below it.
+1. **Propagation.** The W3C Trace Context of the caller travels in `params._meta` under the keys `traceparent`, `tracestate` and `baggage`, exactly as the specification reserves them (SEP-414). Injected by whichever side sends a request or a notification, extracted by the side that receives it.
+2. **Spans.** One `CLIENT` span per request or notification sent, one `SERVER` span per request or notification received, on either side, named and attributed after the [OpenTelemetry semantic conventions for MCP](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/mcp.md). The server span is active while your tool runs, so the spans your tool creates hang below it.
 
 The result is a single trace: the agent span, the client span, the server span in the other process, and whatever the tool opens below it, in Jaeger or any OTLP backend.
 
@@ -16,7 +16,7 @@ No fork, no `--require`, no module-level monkey patching: you pass the transport
 ## Status
 
 - Version 0.2.0. Targets `@modelcontextprotocol/*` 2.0.0, the first release line that speaks `2026-07-28`. The 1.x SDK is not supported. Node 20 or later.
-- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage`, `elicitation/create`, `roots/list`), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications too: `notifications/progress` emitted from a tool carries the tool's context, `notifications/cancelled` is parented to the request it cancels. Metrics are not implemented yet (see Roadmap).
+- Requests in both directions. `tools/call`, `tools/list` and every other request the client sends gets a span; so do the requests the server initiates (`sampling/createMessage` and `elicitation/create` are tested; `roots/list` and `ping` take the same path), with the CLIENT span on the server side under the tool span and the SERVER span on the client side under it. Notifications too: `notifications/progress` emitted from a tool carries the tool's context, `notifications/cancelled` is parented to the request it cancels. Metrics are not implemented yet (see Roadmap).
 - The MCP semantic conventions are at status Development and may change. While they are, a minor version of this package may rename attributes; patch versions never change what is emitted. Attribute names live in one module of this package, checked by a test against `@opentelemetry/semantic-conventions` 1.43.0. Read [docs/END-OF-LIFE.md](https://github.com/AmirK-S/mcp-opentelemetry/blob/main/docs/END-OF-LIFE.md) before depending on this in production.
 
 Dependencies are pinned in `package-lock.json`; the tested combinations are:
@@ -90,6 +90,8 @@ await client.callTool({ name: 'get-weather', arguments: { city: 'Paris' } });
 
 `instrumentClient(client)` does the same through `connect`, for code that does not own the transport.
 
+Since 0.2.0 both sides handle both directions, so `instrumentClientTransport` and `instrumentServerTransport` behave the same; the two names only record which role the object plays, for readers and for `isInstrumented`.
+
 ### Options
 
 Every function takes an optional second argument:
@@ -150,7 +152,7 @@ The span status is `ERROR` on a JSON-RPC error, on `isError`, and on a failed wr
 
 ### Parenting
 
-- The context carried by `_meta` is the parent of the server span. An ambient context on the server, for instance the span of the incoming HTTP request opened by another instrumentation, becomes a **link**, not a parent, as the convention asks. Transport and MCP contexts are independent.
+- The context carried by `_meta` is the parent of the `SERVER` span, on whichever side receives the request. An ambient context on the receiving side, for instance the span of the incoming HTTP request opened by another instrumentation, becomes a **link**, not a parent, as the convention asks. Transport and MCP contexts are independent.
 - When `_meta` carries no context, or an invalid one, the ambient context is the parent, and a new trace starts if there is none. A malformed `traceparent` never fails the call and never orphans the span. Baggage is extracted even without a `traceparent`.
 - On the server the package rewrites the inbound `traceparent` so that it names the server span. Anything that extracts `_meta` again downstream, a second instrumentation or a handler forwarding the request, parents under the server span. The trace id does not change. Every other `_meta` key is left untouched.
 - The client never drops `_meta` entries: it copies what the SDK and the caller put there, adds its three keys, and leaves the object the caller still holds untouched, so the required `io.modelcontextprotocol/*` keys of `2026-07-28` survive. The conformance scenario `request-metadata` checks exactly that.

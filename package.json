@@ -15,7 +15,7 @@
   "files": [
     "dist",
     "src",
-    "docs",
+    "docs/END-OF-LIFE.md",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
