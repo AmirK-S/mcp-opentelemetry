@@ -126,7 +126,9 @@ describe('tools/call request', () => {
     }
   });
 
-  it('runs the tool handler inside the server span context', async () => {
+  // Failed once under load on 2026-09-06, not reproduced in 75 runs:
+  // https://github.com/AmirK-S/mcp-opentelemetry/issues/1
+  it('runs the tool handler inside the server span context', { retry: 1 }, async () => {
     const otel = setupOtel();
     pair = await connectedPair(
       {
@@ -136,6 +138,9 @@ describe('tools/call request', () => {
       otel,
     );
     await pair.client.callTool({ name: 'echo', arguments: { text: 'hi' } });
+    // The server span ends in a continuation after the response is written:
+    // cross a macrotask boundary before reading the exporter.
+    await new Promise((r) => setImmediate(r));
     const serverSpan = otel.serverSpans().find((s) => s.name === 'tools/call echo')!;
     const obs = pair.observed[0]!;
     expect(obs.activeSpan?.spanContext().spanId).toBe(serverSpan.spanContext().spanId);
