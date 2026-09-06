@@ -24,7 +24,13 @@ const url = new URL(process.argv[2] ?? 'http://localhost:8000/mcp/mcp');
 const telemetry = startTelemetry('mcp-example-hivemind-client');
 const tracer = telemetry.provider.getTracer('example-hivemind-client');
 
-const transport = new StreamableHTTPClientTransport(url);
+// HiveMind reads its auth context from the HTTP Authorization header, never
+// from tool arguments. HIVEMIND_TOKEN carries the bearer token when there is one.
+const token = process.env['HIVEMIND_TOKEN'];
+const transport = new StreamableHTTPClientTransport(
+  url,
+  token === undefined ? {} : { requestInit: { headers: { authorization: `Bearer ${token}` } } },
+);
 
 // Read the outbound frames as they are handed to the transport, after the
 // instrumentation has injected into `params._meta`. This is the proof that the
