@@ -113,7 +113,7 @@ Applying the package twice to the same object is a no-op.
 
 ### Exports
 
-Besides the five functions above, the package exports `isInstrumented(transport)`, the `_meta` key constants (`TRACEPARENT_META_KEY`, `TRACESTATE_META_KEY`, `BAGGAGE_META_KEY`, `PROTOCOL_VERSION_META_KEY`), the attribute and metric name constants of `src/semconv.ts` (`ATTR_MCP_METHOD_NAME`, `ATTR_GEN_AI_TOOL_NAME`, ...), the `error.type` values (`ERROR_TYPE_VALUE_TOOL_ERROR`, `ERROR_TYPE_VALUE_CONNECTION_CLOSED`), and `PACKAGE_NAME`, `PACKAGE_VERSION`. Use the constants rather than copying the strings: they follow the convention when it moves.
+Besides the five functions above, the package exports `isInstrumented(transport)`, the `_meta` key constants (`TRACEPARENT_META_KEY`, `TRACESTATE_META_KEY`, `BAGGAGE_META_KEY`, `PROTOCOL_VERSION_META_KEY`), the attribute and metric name constants of `src/semconv.ts` (`ATTR_MCP_METHOD_NAME`, `ATTR_GEN_AI_TOOL_NAME`, ...), the `error.type` values (`ERROR_TYPE_VALUE_TOOL_ERROR`, `ERROR_TYPE_VALUE_CANCELLED`, `ERROR_TYPE_VALUE_CONNECTION_CLOSED`), `DURATION_BUCKET_BOUNDARIES`, and `PACKAGE_NAME`, `PACKAGE_VERSION`. Use the constants rather than copying the strings: they follow the convention when it moves.
 
 ## What you get
 
@@ -126,7 +126,7 @@ Besides the five functions above, the package exports `isInstrumented(transport)
 
 Both sides get both kinds: a server that calls `sampling/createMessage` from inside a tool gets a `CLIENT` span under its `SERVER` span, and the client that answers gets a `SERVER` span under that, in the same trace.
 
-Notifications follow the same rule with two differences: the `CLIENT` span ends as soon as the notification is written, and the `SERVER` span covers the dispatch to the SDK, not the handler, which the SDK runs later. A `notifications/progress` sent from inside a tool sits under the tool's `SERVER` span. A `notifications/cancelled` is sent by the SDK from the abort handler, outside any request context, so it is parented to the span of the request it cancels; that request span is closed at that moment with `error.type` `cancelled`. Every notification, `notifications/initialized` included, gets a `_meta` with the context: the schema makes `_meta` optional on notifications and the SDK passes it through.
+Notifications follow the same rule with two differences: the `CLIENT` span ends as soon as the notification is written, and the `SERVER` span covers the dispatch to the SDK, not the handler, which the SDK runs later. A `notifications/progress` sent from inside a tool sits under the tool's `SERVER` span. A `notifications/cancelled` is sent by the SDK from the abort handler, outside any request context, so it is parented to the span of the request it cancels; that request span is closed at that moment with `error.type` `cancelled` on the sender, and the receiver closes its own `SERVER` span the same way when the cancellation arrives, since the SDK never answers a cancelled request. A response that still arrives afterwards is handed to the SDK but no longer recorded. Every notification, `notifications/initialized` included, gets a `_meta` with the context: the schema makes `_meta` optional on notifications and the SDK passes it through. This means one span per message on each side, notifications included; a chatty progress stream is a lot of short spans, and `instrumentNotifications: false` keeps notifications out entirely.
 
 `target` is the tool name for `tools/call` and the prompt name for `prompts/get`, and absent otherwise: `tools/list` is named `tools/list`, a tool call `tools/call get-weather`, a resource read `resources/read` (the uri is an attribute, and part of the name only with `resourceUriInSpanName`).
 
@@ -169,8 +169,8 @@ Identifiers (`jsonrpc.request.id`), the resource uri and the opt-in payloads nev
 
 - The context carried by `_meta` is the parent of the `SERVER` span, on whichever side receives the request. An ambient context on the receiving side, for instance the span of the incoming HTTP request opened by another instrumentation, becomes a **link**, not a parent, as the convention asks. Transport and MCP contexts are independent.
 - When `_meta` carries no context, or an invalid one, the ambient context is the parent, and a new trace starts if there is none. A malformed `traceparent` never fails the call and never orphans the span. Baggage is extracted even without a `traceparent`.
-- On the server the package rewrites the inbound `traceparent` so that it names the server span. Anything that extracts `_meta` again downstream, a second instrumentation or a handler forwarding the request, parents under the server span. The trace id does not change. Every other `_meta` key is left untouched.
-- The client never drops `_meta` entries: it copies what the SDK and the caller put there, adds its three keys, and leaves the object the caller still holds untouched, so the required `io.modelcontextprotocol/*` keys of `2026-07-28` survive. The conformance scenario `request-metadata` checks exactly that.
+- On the receiving side the package rewrites the inbound `traceparent` so that it names the `SERVER` span it opened. Anything that extracts `_meta` again downstream, a second instrumentation or a handler forwarding the request, parents under the server span. The trace id does not change. Every other `_meta` key is left untouched.
+- The sending side never drops `_meta` entries: it copies what the SDK and the caller put there, adds its three keys, and leaves the object the caller still holds untouched, so the required `io.modelcontextprotocol/*` keys of `2026-07-28` survive. The conformance scenario `request-metadata` checks exactly that.
 
 ### Size
 

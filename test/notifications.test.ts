@@ -107,6 +107,26 @@ describe('notifications/cancelled', () => {
     const received = otel.serverSpans().find((s) => s.name === 'notifications/cancelled')!;
     expect(received).toBeDefined();
     expect(received.parentSpanContext?.spanId).toBe(emitted.spanContext().spanId);
+
+    // The receiver closes its own span of the cancelled request too.
+    const serverRequestSpan = otel.serverSpans().find((s) => s.name === 'tools/call slow')!;
+    expect(serverRequestSpan, 'server span of the cancelled request closed at cancellation').toBeDefined();
+    expect(serverRequestSpan.attributes[ATTR_ERROR_TYPE]).toBe('cancelled');
+  });
+});
+
+describe('instrumentNotifications: false', () => {
+  it('leaves notifications untouched on both sides', async () => {
+    const otel = setupOtel({ instrumentNotifications: false });
+    pair = await connectedPair({
+      instrumentClient: (t) => instrumentClientTransport(t, otel.options),
+      instrumentServer: (t) => instrumentServerTransport(t, otel.options),
+    });
+    const initialized = pair.wire.clientToServer.find((m) => 'method' in m && m.method === 'notifications/initialized');
+    expect(metaOf(initialized)?.[TRACEPARENT_META_KEY]).toBeUndefined();
+    await pair.client.callTool({ name: 'echo', arguments: { text: 'hi' } });
+    expect(otel.spans().filter((s) => s.name.startsWith('notifications/'))).toHaveLength(0);
+    expect(otel.clientSpans().find((s) => s.name === 'tools/call echo')).toBeDefined();
   });
 });
 

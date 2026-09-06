@@ -539,6 +539,17 @@ function instrumentAsPeer(transport: TransportLike, state: TransportState): () =
   }
 
   function receiveNotification(message: JsonRpcNotificationLike, extra: unknown, fn: NonNullable<TransportLike['onmessage']>): unknown {
+    if (message.method === 'notifications/cancelled') {
+      // The SDK never answers a cancelled request: close its span now, or it
+      // would wait for the transport to close.
+      const requestId = message.params?.['requestId'];
+      const key = typeof requestId === 'string' || typeof requestId === 'number' ? pendingKey(requestId) : undefined;
+      const cancelled = key === undefined ? undefined : state.inbound.get(key);
+      if (cancelled !== undefined && key !== undefined) {
+        state.inbound.delete(key);
+        state.fail(cancelled, ERROR_TYPE_VALUE_CANCELLED);
+      }
+    }
     const { parent, links } = inboundParent(message);
     const attributes = state.notificationAttributes(message);
     const span = state.tracer.startSpan(message.method, { kind: SpanKind.SERVER, attributes, links }, parent);
