@@ -161,9 +161,9 @@ The four histograms of the convention, in seconds, with its explicit bucket boun
 | `mcp.client.operation.duration` | a request this side sent is answered, or a notification it sent is written | `mcp.method.name`, `gen_ai.tool.name`, `gen_ai.prompt.name`, `gen_ai.operation.name`, `mcp.protocol.version`, `network.transport`, `server.address`, `server.port`, `error.type`, `rpc.response.status_code` |
 | `mcp.server.operation.duration` | the response to a request this side received is written, or a notification it received is dispatched | same |
 | `mcp.client.session.duration` | the transport of an `instrumentClientTransport` closes | `mcp.protocol.version`, `network.transport`, `server.address`, `server.port` |
-| `mcp.server.session.duration` | the transport of an `instrumentServerTransport` closes | same |
+| `mcp.server.session.duration` | the transport of an `instrumentServerTransport` closes | `mcp.protocol.version`, `network.transport` |
 
-Identifiers (`jsonrpc.request.id`), the resource uri and the opt-in payloads never go on a metric. A session is measured from `start()` to `close()`; on the server side of `createMcpHandler` that is one HTTP request.
+Identifiers (`jsonrpc.request.id`), the resource uri and the opt-in payloads never go on a metric. A session is measured from `start()` to `close()` of the transport.
 
 ### Parenting
 
@@ -180,6 +180,7 @@ A complete `_meta` with the two required envelope keys, a 512 character `tracest
 
 - HTTP requests rejected before the transport (missing `Mcp-Method` header, a 2025-era opening on a modern-only route, 405) never reach the instrumentation and produce no span. Put an HTTP instrumentation in front if you need them.
 - Hosts that send no `traceparent` start the trace at the server. Measured on 2026-09-05: Claude Code 2.1.261 speaks `2025-11-25` and puts only `progressToken` and `claudecode/toolUseId` in `_meta`, so a server behind it produces root spans, one per tool call.
+- Under `createMcpHandler` the SDK builds one transport per HTTP request, so `mcp.server.session.duration` measures one HTTP request, not a client session: expect one point per request there.
 - The `SERVER` span of a notification does not cover the handler: the SDK hands notifications to their handler in a later microtask, out of reach of the transport.
 - ESM only. A CommonJS build can be added if someone needs it; the SDK 2.x ships both, so the constraint comes from this package, not from the SDK.
 - Instrument a transport before `connect()`. Applied later, the package wraps the callbacks already installed, but the messages that went through before are not seen.

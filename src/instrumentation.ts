@@ -227,7 +227,7 @@ class TransportState {
   }
 
   pending(span: Span, method: string, direction: 'outbound' | 'inbound', attributes: Attributes): Pending {
-    return { span, method, direction, startedAt: performance.now(), metricAttributes: metricAttributesOf(attributes) };
+    return { span, method, direction, startedAt: performance.now(), metricAttributes: this.meter === undefined ? {} : metricAttributesOf(attributes) };
   }
 
   recordOperation(pending: Pending, extra: Attributes = {}): void {
@@ -247,6 +247,11 @@ class TransportState {
     const h = this.instruments();
     if (h === undefined) return;
     const attributes: Attributes = { ...this.staticAttributes };
+    if (this.role === 'server') {
+      // The convention lists server.address and server.port on the client session only.
+      delete attributes[ATTR_SERVER_ADDRESS];
+      delete attributes[ATTR_SERVER_PORT];
+    }
     if (this.negotiatedProtocolVersion !== undefined) attributes[ATTR_MCP_PROTOCOL_VERSION] = this.negotiatedProtocolVersion;
     h.session.record(seconds(this.sessionStartedAt), attributes);
   }

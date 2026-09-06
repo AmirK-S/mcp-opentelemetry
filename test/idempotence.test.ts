@@ -65,3 +65,20 @@ describe('idempotence', () => {
     expect(otel.serverSpans()).toHaveLength(0);
   });
 });
+
+describe('role independence', () => {
+  it('produces the same spans with the two instrument functions swapped', async () => {
+    const otel = setupOtel();
+    pair = await connectedPair({
+      instrumentClient: (t) => instrumentServerTransport(t, otel.options),
+      instrumentServer: (t) => instrumentClientTransport(t, otel.options),
+    });
+    await pair.client.callTool({ name: 'ask', arguments: { question: 'q' } });
+    await new Promise((r) => setImmediate(r));
+    const names = otel.spans().map((s) => `${s.kind}:${s.name}`).sort();
+    expect(names).toContain('2:tools/call ask');
+    expect(names).toContain('1:tools/call ask');
+    expect(names).toContain('2:sampling/createMessage');
+    expect(names).toContain('1:sampling/createMessage');
+  });
+});
