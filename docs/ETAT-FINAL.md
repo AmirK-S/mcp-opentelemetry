@@ -22,6 +22,10 @@ Requests in both directions, notifications, the four duration histograms, the pa
 
 None of these is a known defect. Each will be considered on an issue that describes a real use.
 
+## Open issues
+
+- [#1](https://github.com/AmirK-S/mcp-opentelemetry/issues/1), `test-flake`: one intermittent failure of a unit test on 2026-09-06, under load, not reproduced in 75 runs since and never in CI. The test now crosses a macrotask boundary before reading the exporter and retries once. Not a defect of the instrumentation; kept open until it is reproduced with a message or a month of green CI runs has passed. This list mirrors the repository's issue tracker; when the two disagree, the tracker is right.
+
 ## Signals that reopen the package
 
 Listed with their responses in [END-OF-LIFE.md](END-OF-LIFE.md): a rename in the MCP semantic conventions, a change to the reserved `_meta` keys in a later protocol revision, the SDK shipping its own instrumentation, a 2.x release of the SDK that changes the transport interface.
