@@ -1,4 +1,4 @@
-# Real-world run against a third-party MCP server
+# Real-world run against a real MCP server from another project of the author
 
 A run of this package against an MCP server it was not written for and that is not
 one of its fixtures: HiveMind, a Python server built on `fastmcp` 2.14.5 over
